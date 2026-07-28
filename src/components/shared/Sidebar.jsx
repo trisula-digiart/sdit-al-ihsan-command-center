@@ -10,7 +10,8 @@ import {
   FileText,
   Calendar,
   LogOut,
-  ShieldAlert,
+  Sparkles,
+  Compass,
 } from 'lucide-react';
 
 const NAVIGATION_ITEMS = [
@@ -45,26 +46,28 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="print:hidden hidden lg:flex flex-col w-64 bg-slate-900 text-slate-200 h-screen border-r border-slate-800 shrink-0 sticky top-0">
-      {/* Header Branding */}
-      <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center font-bold text-white text-base shadow-md shadow-emerald-900/30">
+    <aside className="print:hidden hidden lg:flex flex-col w-64 bg-white/95 backdrop-blur-md text-emerald-950 h-screen border-r border-emerald-100 shrink-0 sticky top-0 shadow-lg shadow-emerald-900/5">
+      {/* Header Branding - Nuansa Islami Cerah */}
+      <div className="p-5 border-b border-emerald-100 flex items-center gap-3 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-white">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-amber-500 flex items-center justify-center font-black text-white text-base shadow-md shadow-emerald-600/20 ring-2 ring-emerald-200">
           AI
         </div>
         <div className="flex flex-col min-w-0">
-          <h1 className="font-bold text-sm text-white tracking-wide truncate">
-            SDIT AL IHSAN
+          <h1 className="font-extrabold text-sm text-emerald-950 tracking-wide truncate flex items-center gap-1">
+            <span>SDIT AL IHSAN</span>
           </h1>
-          <p className="text-[10px] text-emerald-400 font-medium tracking-tight truncate">
-            Integrated Command Center
+          <p className="text-[10px] text-emerald-700 font-bold tracking-tight truncate flex items-center gap-1">
+            <Compass className="w-3 h-3 text-amber-500" />
+            <span>Command Center</span>
           </p>
         </div>
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <div className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-          Menu Utama
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
+        <div className="px-3 pb-2 text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles className="w-3 h-3 text-amber-500" />
+          <span>Navigasi Utama</span>
         </div>
         {NAVIGATION_ITEMS.map((item) => {
           const Icon = item.icon;
@@ -74,15 +77,15 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 group ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 group ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/50'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-500'
+                  : 'text-slate-600 hover:text-emerald-900 hover:bg-emerald-50/80'
               }`}
             >
               <Icon
                 className={`w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                  isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                  isActive ? 'text-amber-300' : 'text-emerald-600 group-hover:text-emerald-700'
                 }`}
               />
               <span className="truncate">{item.name}</span>
@@ -91,21 +94,21 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Info & Logout */}
-      <div className="p-3 border-t border-slate-800 space-y-3">
-        <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-800 flex items-center gap-2.5">
-          <ShieldAlert className="w-4 h-4 text-emerald-400 shrink-0" />
+      {/* Footer Status & Logout */}
+      <div className="p-3 border-t border-emerald-100 space-y-2.5 bg-gradient-to-b from-white to-emerald-50/40">
+        <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold text-white truncate">Versi 1.0.0 (Production)</p>
-            <p className="text-[9px] text-slate-400 truncate">Sistem Aktif Terintegrasi</p>
+            <p className="text-[11px] font-extrabold text-emerald-950 truncate">Versi 1.0.0 (Production)</p>
+            <p className="text-[9px] font-semibold text-emerald-700 truncate">Sistem Islami Terpadu</p>
           </div>
         </div>
 
         <Link
           href="/login"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition-all duration-200"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-all duration-200"
         >
-          <LogOut className="w-4 h-4 shrink-0" />
+          <LogOut className="w-4 h-4 shrink-0 text-rose-500" />
           <span>Keluar Sistem</span>
         </Link>
       </div>
