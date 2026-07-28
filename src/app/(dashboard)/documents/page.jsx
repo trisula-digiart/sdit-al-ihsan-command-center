@@ -1,236 +1,310 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, Printer, CheckCircle2, Sparkles } from 'lucide-react';
+import {
+  FileText,
+  Printer,
+  Download,
+  CheckCircle,
+  FileCheck,
+  Building,
+  User,
+  Calendar,
+  Sparkles,
+} from 'lucide-react';
+
+const DOCUMENT_TEMPLATES = [
+  {
+    id: 'surat_tugas',
+    title: 'Surat Tugas Mengajar / Kedinasan',
+    category: 'Kepegawaian',
+    code: 'ST-SDIT/2026',
+  },
+  {
+    id: 'surat_keterangan_siswa',
+    title: 'Surat Keterangan Siswa Aktif',
+    category: 'Kesiswaan',
+    code: 'SK-SDIT/2026',
+  },
+  {
+    id: 'laporan_sarpras',
+    title: 'Berita Acara Pemeliharaan Sarpras',
+    category: 'Operasional',
+    code: 'BA-SARPRAS/2026',
+  },
+];
 
 export default function DocumentGeneratorPage() {
-  const [docType, setDocType] = useState('surat_keterangan');
-  const [docFormData, setDocFormData] = useState({
-    nomorSurat: '421.2/089/SDIT-AI/VII/2026',
-    namaSiswa: 'Muhammad Hafiz',
-    nisn: '0129837492',
-    kelas: '4 Umar bin Khattab',
-    keperluan: 'Mengikuti Musabaqah Hifzhil Qur\'an Tingkat Kota',
-    namaGuru: 'Ustadz Ahmad Fauzi, S.Pd.',
-    jabatanGuru: 'Guru Tahfizh & Wali Kelas 4',
-    tanggal: '28 Juli 2026'
+  const [selectedTemplate, setSelectedTemplate] = useState('surat_tugas');
+  
+  // Dynamic Form State
+  const [formData, setFormData] = useState({
+    nomorSurat: '104/SDIT-AI/ST/VII/2026',
+    namaPenerima: 'Ustadz Ahmad Fauzi, S.Pd',
+    nipNisn: '198804122015031002',
+    jabatan: 'Guru Kelas 4B / Pengajar Kurikulum',
+    maksudTugas: 'Menghadiri Pelatihan Implementasi Kurikulum Merdeka Terpadu tingkat Kota/Kabupaten.',
+    tanggalMulai: '2026-08-01',
+    tanggalSelesai: '2026-08-03',
+    lokasi: 'Aula Dinas Pendidikan Wilayah 2',
+    kotaTerbit: 'Jakarta',
+    tanggalTerbit: '29 Juli 2026',
+    penandatangan: 'H. Ahmad Dahlan, M.Pd',
   });
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handlePrint = () => {
-    if (typeof window !== 'undefined') {
-      window.print();
-    }
+    window.print();
   };
 
   return (
     <div className="space-y-6">
-      
-      {/* Top Info Banner */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Top Bar Action (Hidden on Print) */}
+      <div className="print:hidden flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <FileText className="text-emerald-600" size={20} />
-            Generator Surat & Dokumen Resmi Sekolah
-          </h2>
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <FileText className="w-6 h-6 text-emerald-600" />
+            <span>Document Generator & PDF Export</span>
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Buat otomatis naskah surat resmi ber-Kop SDIT Al Ihsan dan cetak secara presisi.
+            Buat dan cetak surat resmi ber-kop SDIT Al Ihsan secara instan.
           </p>
         </div>
-
-        <button
-          onClick={handlePrint}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs py-2.5 px-4 transition flex items-center gap-2 shadow-sm shrink-0"
-        >
-          <Printer size={16} /> Cetak / Export PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Cetak / Simpan PDF</span>
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Left Column: Interactive Form Controls */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm space-y-4">
-          <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-2">
-            <Sparkles size={16} className="text-emerald-600" />
-            Parameter Template Surat
-          </h3>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Pilih Jenis Template Surat:</label>
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
-            >
-              <option value="surat_keterangan">Surat Keterangan Aktif Siswa</option>
-              <option value="surat_tugas">Surat Tugas Guru / Tenaga Pendidik</option>
-              <option value="undangan_ortu">Surat Undangan Wali Murid</option>
-            </select>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Nomor Surat Resmi</label>
-              <input
-                type="text"
-                value={docFormData.nomorSurat}
-                onChange={(e) => setDocFormData({ ...docFormData, nomorSurat: e.target.value })}
-                className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
-
-            {docType === 'surat_keterangan' && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Nama Siswa</label>
-                  <input
-                    type="text"
-                    value={docFormData.namaSiswa}
-                    onChange={(e) => setDocFormData({ ...docFormData, namaSiswa: e.target.value })}
-                    className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">NISN</label>
-                    <input
-                      type="text"
-                      value={docFormData.nisn}
-                      onChange={(e) => setDocFormData({ ...docFormData, nisn: e.target.value })}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Kelas</label>
-                    <input
-                      type="text"
-                      value={docFormData.kelas}
-                      onChange={(e) => setDocFormData({ ...docFormData, kelas: e.target.value })}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Keperluan Surat</label>
-                  <textarea
-                    rows={2}
-                    value={docFormData.keperluan}
-                    onChange={(e) => setDocFormData({ ...docFormData, keperluan: e.target.value })}
-                    className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-              </>
-            )}
-
-            {docType === 'surat_tugas' && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Nama Guru / Staf Diberi Tugas</label>
-                  <input
-                    type="text"
-                    value={docFormData.namaGuru}
-                    onChange={(e) => setDocFormData({ ...docFormData, namaGuru: e.target.value })}
-                    className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Jabatan</label>
-                  <input
-                    type="text"
-                    value={docFormData.jabatanGuru}
-                    onChange={(e) => setDocFormData({ ...docFormData, jabatanGuru: e.target.value })}
-                    className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Deskripsi Tugas & Lokasi</label>
-                  <textarea
-                    rows={2}
-                    value={docFormData.keperluan}
-                    onChange={(e) => setDocFormData({ ...docFormData, keperluan: e.target.value })}
-                    className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Tanggal Surat</label>
-              <input
-                type="text"
-                value={docFormData.tanggal}
-                onChange={(e) => setDocFormData({ ...docFormData, tanggal: e.target.value })}
-                className="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Live Document Print Preview */}
-        <div className="bg-white p-8 rounded-xl border border-slate-300 shadow-md min-h-[550px] text-slate-800 flex flex-col justify-between print:m-0 print:shadow-none">
-          
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Form Controls (Hidden on Print) */}
+        <div className="print:hidden lg:col-span-5 space-y-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
-            {/* Kop Surat Header */}
-            <div className="text-center border-b-2 border-emerald-900 pb-4 mb-6">
-              <h2 className="text-lg font-bold text-emerald-900 tracking-wide uppercase">YAYASAN AL IHSAN ISLAMIC CENTER</h2>
-              <h1 className="text-xl font-extrabold text-slate-900 tracking-wider">SDIT AL IHSAN INTEGRATED</h1>
-              <p className="text-[10px] text-slate-600 mt-1">Jl. Pendidikan Islamic No. 45, Kota Hijau • Telp: (021) 7890-1234 • Web: sdit-alihsan.sch.id</p>
-            </div>
-
-            {/* Document Title */}
-            <div className="text-center mb-6">
-              <h3 className="font-bold underline text-xs uppercase text-slate-900 tracking-wide">
-                {docType === 'surat_keterangan' && 'SURAT KETERANGAN AKTIF SISWA'}
-                {docType === 'surat_tugas' && 'SURAT TUGAS DINAS / SEKOLAH'}
-                {docType === 'undangan_ortu' && 'SURAT UNDANGAN WALI MURID'}
-              </h3>
-              <p className="text-[11px] text-slate-600">Nomor: {docFormData.nomorSurat}</p>
-            </div>
-
-            {/* Body Content */}
-            <div className="text-xs space-y-4 leading-relaxed text-slate-700">
-              <p>Yang bertanda tangan di bawah ini Kepala Sekolah Dasar Islam Terpadu (SDIT) Al Ihsan menerangkan bahwa:</p>
-              
-              {docType === 'surat_keterangan' && (
-                <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-1.5 font-sans">
-                  <p><span className="w-32 inline-block font-semibold text-slate-900">Nama Siswa</span>: {docFormData.namaSiswa}</p>
-                  <p><span className="w-32 inline-block font-semibold text-slate-900">NISN</span>: {docFormData.nisn}</p>
-                  <p><span className="w-32 inline-block font-semibold text-slate-900">Kelas</span>: {docFormData.kelas}</p>
-                </div>
-              )}
-
-              {docType === 'surat_tugas' && (
-                <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-1.5 font-sans">
-                  <p><span className="w-32 inline-block font-semibold text-slate-900">Nama Guru/Staf</span>: {docFormData.namaGuru}</p>
-                  <p><span className="w-32 inline-block font-semibold text-slate-900">Jabatan</span>: {docFormData.jabatanGuru}</p>
-                </div>
-              )}
-
-              <p>
-                {docType === 'surat_keterangan' && `Adalah benar siswa aktif di SDIT Al Ihsan pada Tahun Ajaran 2026/2027. Surat keterangan ini diterbitkan guna keperluan: ${docFormData.keperluan}.`}
-                {docType === 'surat_tugas' && `Diberikan tugas resmi untuk melaksanakan kegiatan: ${docFormData.keperluan}.`}
-              </p>
-
-              <p>Demikian surat ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+            <label className="block text-xs font-bold text-slate-700 mb-2">
+              1. Pilih Template Dokumen
+            </label>
+            <div className="space-y-2">
+              {DOCUMENT_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => setSelectedTemplate(tmpl.id)}
+                  className={`w-full p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between ${
+                    selectedTemplate === tmpl.id
+                      ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  }`}
+                >
+                  <div>
+                    <p className="font-semibold">{tmpl.title}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{tmpl.category} • {tmpl.code}</p>
+                  </div>
+                  {selectedTemplate === tmpl.id && (
+                    <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  )}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Signature Footer */}
-          <div className="pt-8 flex justify-end text-xs">
-            <div className="text-center w-56">
-              <p>Kota Hijau, {docFormData.tanggal}</p>
-              <p className="font-semibold text-slate-800 mt-1">Kepala Sekolah SDIT Al Ihsan</p>
-              <div className="h-16 flex items-center justify-center my-1 text-emerald-800 font-bold italic border-b border-slate-300 text-[10px]">
-                [ Tanda Tangan & Cap Digital ]
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <label className="block text-xs font-bold text-slate-700">
+              2. Parameter & Isi Dokumen
+            </label>
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-600">Nomor Surat</span>
+              <input
+                type="text"
+                name="nomorSurat"
+                value={formData.nomorSurat}
+                onChange={handleInputChange}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-600">Nama Penerima / Pegawai</span>
+              <input
+                type="text"
+                name="namaPenerima"
+                value={formData.namaPenerima}
+                onChange={handleInputChange}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-600">NIP / NISN</span>
+                <input
+                  type="text"
+                  name="nipNisn"
+                  value={formData.nipNisn}
+                  onChange={handleInputChange}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
               </div>
-              <p className="font-bold text-slate-900">H. Sulaiman, M.Pd.</p>
-              <p className="text-[10px] text-slate-500">NIP. 19820412 200801 1 003</p>
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-600">Jabatan</span>
+                <input
+                  type="text"
+                  name="jabatan"
+                  value={formData.jabatan}
+                  onChange={handleInputChange}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-600">Maksud & Keperluan Tugas</span>
+              <textarea
+                name="maksudTugas"
+                rows="3"
+                value={formData.maksudTugas}
+                onChange={handleInputChange}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              ></textarea>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-600">Lokasi Pelaksanaan</span>
+              <input
+                type="text"
+                name="lokasi"
+                value={formData.lokasi}
+                onChange={handleInputChange}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-600">Tanggal Terbit</span>
+                <input
+                  type="text"
+                  name="tanggalTerbit"
+                  value={formData.tanggalTerbit}
+                  onChange={handleInputChange}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-600">Penandatangan</span>
+                <input
+                  type="text"
+                  name="penandatangan"
+                  value={formData.penandatangan}
+                  onChange={handleInputChange}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
             </div>
           </div>
-
         </div>
 
-      </div>
+        {/* Live Document Preview (A4 Paper Container) */}
+        <div className="lg:col-span-7 w-full flex justify-center bg-slate-100 p-2 md:p-6 rounded-2xl border border-slate-200 print:p-0 print:border-none print:bg-white print:w-full">
+          <div className="bg-white w-full max-w-[210mm] min-h-[297mm] p-8 md:p-12 shadow-xl rounded-sm text-slate-900 border border-slate-200 flex flex-col justify-between print:shadow-none print:border-none print:p-0">
+            <div>
+              {/* Kop Surat Resmi */}
+              <div className="border-b-4 border-double border-emerald-900 pb-4 mb-6 flex items-center justify-between gap-4">
+                <div className="w-16 h-16 bg-emerald-700 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0">
+                  AI
+                </div>
+                <div className="text-center flex-1">
+                  <h2 className="text-lg font-black tracking-wider text-emerald-950 uppercase">
+                    YAYASAN AL IHSAN ISLAMIC CENTER
+                  </h2>
+                  <h3 className="text-xl font-black tracking-tight text-slate-900 uppercase">
+                    SDIT AL IHSAN INTEGRATED SCHOOL
+                  </h3>
+                  <p className="text-[10px] text-slate-600 mt-0.5">
+                    Jl. Education No. 45, Kompleks Islamic Center • Telp: (021) 8892-1029 • Web: www.sditalihsan.sch.id
+                  </p>
+                </div>
+                <div className="w-16 h-16 opacity-0 shrink-0">AI</div>
+              </div>
 
+              {/* Judul Surat */}
+              <div className="text-center my-6 space-y-1">
+                <h4 className="text-base font-bold underline tracking-wide uppercase text-slate-900">
+                  {DOCUMENT_TEMPLATES.find((t) => t.id === selectedTemplate)?.title}
+                </h4>
+                <p className="text-xs font-medium text-slate-600">
+                  Nomor: {formData.nomorSurat}
+                </p>
+              </div>
+
+              {/* Isi Surat Body */}
+              <div className="text-xs leading-relaxed space-y-4 text-slate-800 my-8">
+                <p>
+                  Yang bertanda tangan di bawah ini, Kepala Sekolah SDIT Al Ihsan dengan ini memberikan tugas/keterangan resmi kepada:
+                </p>
+
+                <div className="pl-6 space-y-1.5 font-medium">
+                  <div className="grid grid-cols-12">
+                    <span className="col-span-4 text-slate-500">Nama Lengkap</span>
+                    <span className="col-span-8 font-bold text-slate-900">: {formData.namaPenerima}</span>
+                  </div>
+                  <div className="grid grid-cols-12">
+                    <span className="col-span-4 text-slate-500">NIP / Identitas</span>
+                    <span className="col-span-8">: {formData.nipNisn}</span>
+                  </div>
+                  <div className="grid grid-cols-12">
+                    <span className="col-span-4 text-slate-500">Jabatan / Peran</span>
+                    <span className="col-span-8">: {formData.jabatan}</span>
+                  </div>
+                </div>
+
+                <p className="pt-2">
+                  Untuk melaksanakan tugas dan kewajiban sebagaimana tercantum di bawah ini:
+                </p>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <p className="font-semibold text-slate-900">{formData.maksudTugas}</p>
+                  <p className="text-[11px] text-slate-600">
+                    <span className="font-bold">Lokasi:</span> {formData.lokasi}
+                  </p>
+                </div>
+
+                <p className="pt-2">
+                  Demikian surat tugas ini diterbitkan untuk dipergunakan sebagaimana mestinya dan dilaksanakan dengan penuh rasa tanggung jawab.
+                </p>
+              </div>
+            </div>
+
+            {/* Tanda Tangan Footer */}
+            <div className="pt-12 flex justify-end">
+              <div className="text-center w-64 space-y-16">
+                <div>
+                  <p className="text-xs text-slate-600">
+                    {formData.kotaTerbit}, {formData.tanggalTerbit}
+                  </p>
+                  <p className="text-xs font-bold text-slate-900 mt-1">
+                    Kepala Sekolah SDIT Al Ihsan
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold underline text-slate-900">
+                    {formData.penandatangan}
+                  </p>
+                  <p className="text-[10px] text-slate-500">NIP. 19750817 200212 1 003</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
