@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, Search, Radio, CheckCircle, Clock, X } from 'lucide-react';
+import { Bell, Search, Radio, Clock, X } from 'lucide-react';
 
 export default function Header({ currentRole = 'Kepala Sekolah' }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -29,7 +29,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
   ];
 
   return (
-    <header className="bg-white border-b border-slate-200 h-16 px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+    <header className="print:hidden bg-white border-b border-slate-200 h-16 px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm">
       {/* Search Input & Date */}
       <div className="flex items-center gap-4 flex-1 max-w-md">
         <div className="relative w-full">
@@ -37,7 +37,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
           <input
             type="text"
             placeholder="Cari siswa, guru, fasilitas, atau dokumen..."
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all text-slate-800"
           />
         </div>
       </div>
@@ -47,7 +47,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
         {/* Date Display */}
         <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
-          <span>{timeString || 'Selasa, 28 Juli 2026'}</span>
+          <span>{timeString || 'Rabu, 29 Juli 2026'}</span>
         </div>
 
         {/* Realtime Status Indicator */}

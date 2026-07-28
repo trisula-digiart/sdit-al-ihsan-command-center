@@ -4,13 +4,7 @@ import React, { useState } from 'react';
 import {
   FileText,
   Printer,
-  Download,
-  CheckCircle,
   FileCheck,
-  Building,
-  User,
-  Calendar,
-  Sparkles,
 } from 'lucide-react';
 
 const DOCUMENT_TEMPLATES = [
@@ -44,8 +38,6 @@ export default function DocumentGeneratorPage() {
     nipNisn: '198804122015031002',
     jabatan: 'Guru Kelas 4B / Pengajar Kurikulum',
     maksudTugas: 'Menghadiri Pelatihan Implementasi Kurikulum Merdeka Terpadu tingkat Kota/Kabupaten.',
-    tanggalMulai: '2026-08-01',
-    tanggalSelesai: '2026-08-03',
     lokasi: 'Aula Dinas Pendidikan Wilayah 2',
     kotaTerbit: 'Jakarta',
     tanggalTerbit: '29 Juli 2026',
@@ -63,6 +55,35 @@ export default function DocumentGeneratorPage() {
 
   return (
     <div className="space-y-6">
+      {/* Dynamic CSS Injection for Print Isolation */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              header, aside, .print\\:hidden {
+                display: none !important;
+              }
+              body, main {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+              .print-area {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 auto !important;
+                width: 100% !important;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 15mm;
+              }
+            }
+          `,
+        }}
+      />
+
       {/* Top Bar Action (Hidden on Print) */}
       <div className="print:hidden flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div>
@@ -86,7 +107,7 @@ export default function DocumentGeneratorPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Form Controls (Hidden on Print) */}
+        {/* Form Controls Left Panel (Hidden on Print) */}
         <div className="print:hidden lg:col-span-5 space-y-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-2">
@@ -212,9 +233,9 @@ export default function DocumentGeneratorPage() {
           </div>
         </div>
 
-        {/* Live Document Preview (A4 Paper Container) */}
-        <div className="lg:col-span-7 w-full flex justify-center bg-slate-100 p-2 md:p-6 rounded-2xl border border-slate-200 print:p-0 print:border-none print:bg-white print:w-full">
-          <div className="bg-white w-full max-w-[210mm] min-h-[297mm] p-8 md:p-12 shadow-xl rounded-sm text-slate-900 border border-slate-200 flex flex-col justify-between print:shadow-none print:border-none print:p-0">
+        {/* Live Document Preview Right Panel (A4 Paper Container) */}
+        <div className="lg:col-span-7 w-full flex justify-center bg-slate-100 p-2 md:p-6 rounded-2xl border border-slate-200">
+          <div className="print-area bg-white w-full max-w-[210mm] min-h-[297mm] p-8 md:p-12 shadow-xl rounded-sm text-slate-900 border border-slate-200 flex flex-col justify-between">
             <div>
               {/* Kop Surat Resmi */}
               <div className="border-b-4 border-double border-emerald-900 pb-4 mb-6 flex items-center justify-between gap-4">
@@ -222,10 +243,10 @@ export default function DocumentGeneratorPage() {
                   AI
                 </div>
                 <div className="text-center flex-1">
-                  <h2 className="text-lg font-black tracking-wider text-emerald-950 uppercase">
+                  <h2 className="text-base md:text-lg font-black tracking-wider text-emerald-950 uppercase">
                     YAYASAN AL IHSAN ISLAMIC CENTER
                   </h2>
-                  <h3 className="text-xl font-black tracking-tight text-slate-900 uppercase">
+                  <h3 className="text-lg md:text-xl font-black tracking-tight text-slate-900 uppercase">
                     SDIT AL IHSAN INTEGRATED SCHOOL
                   </h3>
                   <p className="text-[10px] text-slate-600 mt-0.5">

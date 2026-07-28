@@ -18,31 +18,26 @@ const NAVIGATION_ITEMS = [
     name: 'Executive Dashboard',
     href: '/executive',
     icon: LayoutDashboard,
-    roles: ['Kepala Sekolah', 'Administrator'],
   },
   {
     name: 'Sarpras & Fasilitas',
     href: '/sarpras',
     icon: Building,
-    roles: ['Kepala Sekolah', 'Staf Sarpras', 'Administrator'],
   },
   {
     name: 'Internal Chat Hub',
     href: '/chat',
     icon: MessageSquare,
-    roles: ['Semua Peran'],
   },
   {
     name: 'Document Generator',
     href: '/documents',
     icon: FileText,
-    roles: ['Kepala Sekolah', 'Guru', 'Administrator'],
   },
   {
     name: 'Event Calendar',
     href: '/calendar',
     icon: Calendar,
-    roles: ['Semua Peran'],
   },
 ];
 
@@ -50,7 +45,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-slate-900 text-slate-200 h-screen border-r border-slate-800 shrink-0">
+    <aside className="print:hidden hidden lg:flex flex-col w-64 bg-slate-900 text-slate-200 h-screen border-r border-slate-800 shrink-0 sticky top-0">
       {/* Header Branding */}
       <div className="p-5 border-b border-slate-800 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center font-bold text-white text-base shadow-md shadow-emerald-900/30">
