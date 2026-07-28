@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, ShieldCheck, School } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldAlert, School } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = Router();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Kepala Sekolah');
