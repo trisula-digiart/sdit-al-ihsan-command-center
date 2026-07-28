@@ -9,6 +9,7 @@ import {
   MessageSquare,
   FileText,
   Calendar,
+  GraduationCap,
   LogOut,
   Sparkles,
   Compass,
@@ -19,6 +20,11 @@ const NAVIGATION_ITEMS = [
     name: 'Executive Dashboard',
     href: '/executive',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Data Seluruh Siswa',
+    href: '/students',
+    icon: GraduationCap,
   },
   {
     name: 'Sarpras & Fasilitas',
