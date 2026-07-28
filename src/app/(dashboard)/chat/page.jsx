@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import {
   Send,
   MessageSquare,
@@ -11,6 +12,7 @@ import {
   ShieldCheck,
   Smile,
   Paperclip,
+  Radio,
 } from 'lucide-react';
 
 const CHANNELS = [
@@ -60,22 +62,76 @@ export default function ChatPage() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLive, setIsLive] = useState(false);
 
-  const handleSendMessage = (e) => {
+  // Supabase Realtime Subscription Listener
+  useEffect(() => {
+    let channelSubscription;
+
+    if (supabase) {
+      setIsLive(true);
+      channelSubscription = supabase
+        .channel('public:messages')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            const newMsg = payload.new;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: newMsg.id || Date.now(),
+                sender: newMsg.sender_name || 'User Internal',
+                role: newMsg.sender_role || 'Staff',
+                text: newMsg.content || newMsg.text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                channel: newMsg.channel_id || 'general',
+              },
+            ]);
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      if (channelSubscription && supabase) {
+        supabase.removeChannel(channelSubscription);
+      }
+    };
+  }, []);
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const newMessage = {
+    const newMessageObj = {
       id: Date.now(),
-      sender: 'User Logged In',
-      role: 'Staff Internal',
+      sender: 'H. Ahmad Dahlan, M.Pd',
+      role: 'Kepala Sekolah',
       text: inputText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       channel: activeChannel,
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    // Update lokal state
+    setMessages((prev) => [...prev, newMessageObj]);
     setInputText('');
+
+    // Push ke Supabase DB jika terhubung
+    if (supabase) {
+      try {
+        await supabase.from('messages').insert([
+          {
+            content: inputText,
+            sender_name: 'H. Ahmad Dahlan, M.Pd',
+            sender_role: 'Kepala Sekolah',
+            channel_id: activeChannel,
+          },
+        ]);
+      } catch (err) {
+        console.log('Supabase offline mode, fallback to local state');
+      }
+    }
   };
 
   const filteredMessages = messages.filter(
@@ -97,6 +153,14 @@ export default function ChatPage() {
               <MessageSquare className="w-5 h-5 text-emerald-600" />
               <span>Internal Chat Hub</span>
             </h2>
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+              }`}
+            >
+              <Radio className="w-3 h-3 animate-pulse" />
+              {isLive ? 'Realtime' : 'Local'}
+            </span>
           </div>
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -162,7 +226,7 @@ export default function ChatPage() {
           </div>
           <div className="flex items-center gap-1 text-slate-400 text-xs">
             <Users className="w-4 h-4" />
-            <span className="font-semibold text-slate-600">Aktif</span>
+            <span className="font-semibold text-slate-600">Terhubung</span>
           </div>
         </div>
 
