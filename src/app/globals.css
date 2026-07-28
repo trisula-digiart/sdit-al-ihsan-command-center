@@ -3,34 +3,36 @@
 @tailwind utilities;
 
 :root {
-  --background: #f4f8f5;
-  --foreground: #064e3b;
+  --background: #f1f7f3;
+  --foreground: #022c22;
 }
 
 body {
   color: var(--foreground);
   background-color: var(--background);
-  /* Pattern Background Islami Halus */
-  background-image: radial-gradient(#10b981 0.5px, transparent 0.5px), radial-gradient(#047857 0.5px, #f4f8f5 0.5px);
-  background-size: 20px 20px;
-  background-position: 0 0, 10px 10px;
-  background-opacity: 0.03;
+  /* Latar Belakang Siluet Masjid Islami Transparan Halus */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600' opacity='0.035'%3E%3Cg fill='%3Cpath fill='%23047857' d='M0 600h800V480h-20v-40h-30v40h-20v-80l-30-50-30 50v80h-20v-40h-30v40h-50v-100l-40-70-40 70v100h-30v-60h-40v60h-20v-90l-35-60-35 60v90h-20v-50h-40v50h-40v-120l-50-80-50 80v120h-30v-40h-30v40h-20v-70l-30-50-30 50v70h-20v40H0z'/%3E%3C/g%3E%3C/svg%3E"),
+                    radial-gradient(#059669 0.6px, transparent 0.6px);
+  background-size: cover, 24px 24px;
+  background-position: bottom center, 0 0;
+  background-repeat: no-repeat, repeat;
+  background-attachment: fixed;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar Styling - Islamic Emerald Theme */
+/* Custom Scrollbar - High Contrast Emerald */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #e6f4ea;
+  background: #d1fae5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #10b981;
+  background: #059669;
   border-radius: 9999px;
 }
 
