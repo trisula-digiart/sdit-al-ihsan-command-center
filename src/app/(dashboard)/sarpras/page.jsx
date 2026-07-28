@@ -1,255 +1,321 @@
 'use client';
 
-/* STREAMING_CHUNK:Importing React hooks and Lucide icons for Sarpras page... */
 import React, { useState } from 'react';
 import {
-Building2,
-Plus,
-Search,
-Filter,
-CheckCircle2,
-AlertTriangle,
-Clock,
-Wrench,
-ShieldAlert
+  Wrench,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  PlusCircle,
+  Building,
+  Hammer,
+  Search,
+  Filter,
 } from 'lucide-react';
 
-/* STREAMING_CHUNK:Defining Mock Data for Sarpras Assets... */
-const INITIAL_SARPRAS = [
-{ id: 'SAR-01', name: 'Gedung A - Kelas 1 Al-Fatih', category: 'Ruang Kelas', status: 'Baik', lastCheck: '2026-07-25', reportedBy: 'Pak Ustadz Ahmad' },
-{ id: 'SAR-02', name: 'AC Ruang Guru Lantai 2', category: 'Elektronik', status: 'Perlu Perbaikan', lastCheck: '2026-07-27', reportedBy: 'Bu Siti Rahma' },
-{ id: 'SAR-03', name: 'Proyektor Lab Komputer', category: 'Fasilitas Belajar', status: 'Dalam Perawatan', lastCheck: '2026-07-28', reportedBy: 'Pak Hendra Admin' },
-{ id: 'SAR-04', name: 'Lapangan Olahraga Utama', category: 'Fasilitas Umum', status: 'Baik', lastCheck: '2026-07-20', reportedBy: 'Pak Ridwan PJ OK' },
-{ id: 'SAR-05', name: 'Toilet Murid Lt. 1', category: 'Sanitasi', status: 'Perlu Perbaikan', lastCheck: '2026-07-28', reportedBy: 'Ibu Maryam' },
-];
+export default function SarprasPage() {
+  const [sarprasData, setSarprasData] = useState([
+    {
+      id: 'SAR-01',
+      name: 'AC Ruang Kelas 3A',
+      category: 'Fasilitas Kelas',
+      status: 'Butuh Perbaikan',
+      location: 'Gedung A - Lt 2',
+      reportedAt: '2 Jam lalu',
+      priority: 'Tinggi',
+    },
+    {
+      id: 'SAR-02',
+      name: 'Proyektor Lab Komputer',
+      category: 'Perangkat Elektronik',
+      status: 'Sedang Diperbaiki',
+      location: 'Gedung B - Lt 1',
+      reportedAt: '1 Hari lalu',
+      priority: 'Sedang',
+    },
+    {
+      id: 'SAR-03',
+      name: 'Kran Air Tempat Wudhu Utama',
+      category: 'Sanitasi & Kebersihan',
+      status: 'Selesai',
+      location: 'Area Masjid',
+      reportedAt: '3 Hari lalu',
+      priority: 'Rendah',
+    },
+    {
+      id: 'SAR-04',
+      name: 'Pintu Lapangan Olahraga',
+      category: 'Infrastruktur',
+      status: 'Butuh Perbaikan',
+      location: 'Area Luar',
+      reportedAt: '4 Jam lalu',
+      priority: 'Sedang',
+    },
+  ]);
 
-/* STREAMING_CHUNK:Rendering Sarpras Tracker Component... */
-export default function SarprasTrackerPage() {
-const [sarprasData, setSarprasData] = useState(INITIAL_SARPRAS);
-const [searchTerm, setSearchTerm] = useState('');
-const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [newIssue, setNewIssue] = useState({
+    name: '',
+    category: 'Fasilitas Kelas',
+    location: '',
+    priority: 'Sedang',
+  });
 
-const [newIssue, setNewIssue] = useState({
-name: '',
-category: 'Ruang Kelas',
-status: 'Perlu Perbaikan',
-reportedBy: ''
-});
+  const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-/* STREAMING_CHUNK:Handling New Sarpras Asset Submission... */
-const handleAddSarpras = (e) => {
-e.preventDefault();
-if (!newIssue.name) return;
-const item = {
-id: SAR-0${sarprasData.length + 1},
-name: newIssue.name,
-category: newIssue.category,
-status: newIssue.status,
-lastCheck: new Date().toISOString().split('T')[0],
-reportedBy: newIssue.reportedBy || 'Staf Operasional'
-};
-setSarprasData([item, ...sarprasData]);
-setNewIssue({ name: '', category: 'Ruang Kelas', status: 'Perlu Perbaikan', reportedBy: '' });
-};
+  const handleAddIssue = (e) => {
+    e.preventDefault();
+    if (!newIssue.name) return;
 
-/* STREAMING_CHUNK:Handling Toggle Status Cycle... */
-const toggleSarprasStatus = (id) => {
-setSarprasData(
-sarprasData.map((item) => {
-if (item.id === id) {
-const nextStatus =
-item.status === 'Perlu Perbaikan'
-? 'Dalam Perawatan'
-: item.status === 'Dalam Perawatan'
-? 'Baik'
-: 'Perlu Perbaikan';
-return { ...item, status: nextStatus };
-}
-return item;
-})
-);
-};
+    const item = {
+      id: `SAR-0${sarprasData.length + 1}`,
+      name: newIssue.name,
+      category: newIssue.category,
+      status: 'Butuh Perbaikan',
+      location: newIssue.location || 'Lingkungan Sekolah',
+      reportedAt: 'Baru saja',
+      priority: newIssue.priority,
+    };
 
-const filteredData = sarprasData.filter((item) => {
-const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-item.id.toLowerCase().includes(searchTerm.toLowerCase());
-const matchesCat = selectedCategory === 'Semua' || item.category === selectedCategory;
-return matchesSearch && matchesCat;
-});
+    setSarprasData([item, ...sarprasData]);
+    setNewIssue({ name: '', category: 'Fasilitas Kelas', location: '', priority: 'Sedang' });
+    setShowForm(false);
+  };
 
-return (
+  const handleToggleStatus = (id) => {
+    setSarprasData((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const nextStatus =
+            item.status === 'Butuh Perbaikan'
+              ? 'Sedang Diperbaiki'
+              : item.status === 'Sedang Diperbaiki'
+              ? 'Selesai'
+              : 'Butuh Perbaikan';
+          return { ...item, status: nextStatus };
+        }
+        return item;
+      })
+    );
+  };
 
+  const filteredData = sarprasData.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  {/* Header Info Banner */}
-  <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    <div>
-      <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-        <Building2 className="text-emerald-600" size={20} />
-        Pemeliharaan Sarpras & Fasilitas Gedung
-      </h2>
-      <p className="text-xs text-slate-500 mt-1">
-        Pencatatan inventaris, pelaporan kerusakan, dan alur perbaikan aset SDIT Al Ihsan.
-      </p>
-    </div>
+  return (
+    <div className="space-y-6">
+      {/* Header Page */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+            Sarpras & Building Facilities Tracker
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Pemantauan kondisi fisik gedung, fasilitas kelas, dan perbaikan aset SDIT Al Ihsan.
+          </p>
+        </div>
 
-    <div className="flex items-center gap-2 text-xs">
-      <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 font-semibold flex items-center gap-1.5">
-        <CheckCircle2 size={14} />
-        {sarprasData.filter((s) => s.status === 'Baik').length} Baik
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all text-xs"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>Laporkan Kerusakan Baru</span>
+        </button>
       </div>
-      <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 font-semibold flex items-center gap-1.5">
-        <AlertTriangle size={14} />
-        {sarprasData.filter((s) => s.status !== 'Baik').length} Perlu Penanganan
+
+      {/* Form Tambah Kerusakan */}
+      {showForm && (
+        <form
+          onSubmit={handleAddIssue}
+          className="p-5 bg-white border border-emerald-200 rounded-2xl shadow-md space-y-4 animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
+            Form Laporan Kerusakan Sarpras
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Nama Fasilitas / Aset</label>
+              <input
+                type="text"
+                value={newIssue.name}
+                onChange={(e) => setNewIssue({ ...newIssue, name: e.target.value })}
+                placeholder="Contoh: Lampu Ruang Guru Redup"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Kategori</label>
+              <select
+                value={newIssue.category}
+                onChange={(e) => setNewIssue({ ...newIssue, category: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              >
+                <option value="Fasilitas Kelas">Fasilitas Kelas</option>
+                <option value="Perangkat Elektronik">Perangkat Elektronik</option>
+                <option value="Sanitasi & Kebersihan">Sanitasi & Kebersihan</option>
+                <option value="Infrastruktur">Infrastruktur</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Lokasi Detail</label>
+              <input
+                type="text"
+                value={newIssue.location}
+                onChange={(e) => setNewIssue({ ...newIssue, location: e.target.value })}
+                placeholder="Contoh: Gedung C Lt 1"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 bg-slate-100 rounded-lg"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm"
+            >
+              Kirim Laporan
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Quick Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-rose-50/70 border border-rose-100 rounded-2xl flex items-center gap-3">
+          <div className="p-3 bg-rose-600 text-white rounded-xl">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-rose-800">Butuh Perbaikan</p>
+            <p className="text-xl font-bold text-rose-900">
+              {sarprasData.filter((i) => i.status === 'Butuh Perbaikan').length} Aset
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-amber-50/70 border border-amber-100 rounded-2xl flex items-center gap-3">
+          <div className="p-3 bg-amber-500 text-white rounded-xl">
+            <Hammer className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-amber-800">Sedang Diperbaiki</p>
+            <p className="text-xl font-bold text-amber-900">
+              {sarprasData.filter((i) => i.status === 'Sedang Diperbaiki').length} Aset
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-3">
+          <div className="p-3 bg-emerald-600 text-white rounded-xl">
+            <CheckCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-emerald-800">Selesai/Kondisi Baik</p>
+            <p className="text-xl font-bold text-emerald-900">
+              {sarprasData.filter((i) => i.status === 'Selesai').length} Aset
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter & Table Container */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari fasillitas atau lokasi..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div className="text-xs text-slate-500 font-medium">
+            Menampilkan <span className="font-bold text-slate-700">{filteredData.length}</span> dari {sarprasData.length} item
+          </div>
+        </div>
+
+        {/* Tabel Sarpras */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                <th className="p-3.5 font-bold">Kode Aset</th>
+                <th className="p-3.5 font-bold">Fasilitas / Lokasi</th>
+                <th className="p-3.5 font-bold">Kategori</th>
+                <th className="p-3.5 font-bold">Status Pemeliharaan</th>
+                <th className="p-3.5 font-bold">Waktu Lapor</th>
+                <th className="p-3.5 font-bold text-center">Aksi Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredData.length > 0 ? (
+                filteredData.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-3.5 font-mono font-bold text-slate-600">{item.id}</td>
+                    <td className="p-3.5">
+                      <p className="font-bold text-slate-800">{item.name}</p>
+                      <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                        <Building className="w-3 h-3" />
+                        {item.location}
+                      </p>
+                    </td>
+                    <td className="p-3.5 text-slate-600 font-medium">{item.category}</td>
+                    <td className="p-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[10px] ${
+                          item.status === 'Butuh Perbaikan'
+                            ? 'bg-rose-100 text-rose-700'
+                            : item.status === 'Sedang Diperbaiki'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-slate-500 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      {item.reportedAt}
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <button
+                        onClick={() => handleToggleStatus(item.id)}
+                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md text-[11px] transition-colors"
+                      >
+                        Ubah Status
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-slate-400">
+                    Tidak ada data kerusakan fasilitas yang cocok dengan pencarian.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
-
-  {/* Form Tambah Log Sarpras Baru */}
-  <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-    <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
-      <Plus size={16} className="text-emerald-600" />
-      Tambah Laporan Kerusakan / Log Aset Baru
-    </h3>
-
-    <form onSubmit={handleAddSarpras} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-      <input
-        type="text"
-        placeholder="Nama Fasilitas / Aset..."
-        value={newIssue.name}
-        onChange={(e) => setNewIssue({ ...newIssue, name: e.target.value })}
-        className="border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-        required
-      />
-
-      <select
-        value={newIssue.category}
-        onChange={(e) => setNewIssue({ ...newIssue, category: e.target.value })}
-        className="border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
-      >
-        <option value="Ruang Kelas">Ruang Kelas</option>
-        <option value="Elektronik">Elektronik</option>
-        <option value="Fasilitas Belajar">Fasilitas Belajar</option>
-        <option value="Fasilitas Umum">Fasilitas Umum</option>
-        <option value="Sanitasi">Sanitasi</option>
-      </select>
-
-      <select
-        value={newIssue.status}
-        onChange={(e) => setNewIssue({ ...newIssue, status: e.target.value })}
-        className="border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
-      >
-        <option value="Perlu Perbaikan">Perlu Perbaikan</option>
-        <option value="Dalam Perawatan">Dalam Perawatan</option>
-        <option value="Baik">Baik</option>
-      </select>
-
-      <input
-        type="text"
-        placeholder="Pelapor (Guru / Staf)..."
-        value={newIssue.reportedBy}
-        onChange={(e) => setNewIssue({ ...newIssue, reportedBy: e.target.value })}
-        className="border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-      />
-
-      <button
-        type="submit"
-        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs py-2.5 px-4 transition flex items-center justify-center gap-1 shadow-sm"
-      >
-        <Plus size={16} /> Simpan Log
-      </button>
-    </form>
-  </div>
-
-  {/* Filter & Search Bar */}
-  <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-3">
-    <div className="relative w-full sm:w-72">
-      <Search size={16} className="absolute left-3 top-3 text-slate-400" />
-      <input
-        type="text"
-        placeholder="Cari nama fasilitas / ID..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-      />
-    </div>
-
-    <div className="flex items-center gap-2 w-full sm:w-auto">
-      <Filter size={16} className="text-slate-400" />
-      <select
-        value={selectedCategory}
-        onChange={(e) => setSelectedCategory(e.target.value)}
-        className="text-xs border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
-      >
-        <option value="Semua">Semua Kategori</option>
-        <option value="Ruang Kelas">Ruang Kelas</option>
-        <option value="Elektronik">Elektronik</option>
-        <option value="Fasilitas Belajar">Fasilitas Belajar</option>
-        <option value="Fasilitas Umum">Fasilitas Umum</option>
-        <option value="Sanitasi">Sanitasi</option>
-      </select>
-    </div>
-  </div>
-
-  {/* Tabel Inventaris Sarpras */}
-  <div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-sm">
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs text-left">
-        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-semibold">
-          <tr>
-            <th className="p-3.5">Kode ID</th>
-            <th className="p-3.5">Fasilitas / Lokasi</th>
-            <th className="p-3.5">Kategori</th>
-            <th className="p-3.5">Pelapor</th>
-            <th className="p-3.5">Pemeriksaan Terakhir</th>
-            <th className="p-3.5">Status</th>
-            <th className="p-3.5 text-right">Aksi Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {filteredData.map((item) => (
-            <tr key={item.id} className="hover:bg-slate-50/80 transition">
-              <td className="p-3.5 font-mono font-medium text-slate-500">{item.id}</td>
-              <td className="p-3.5 font-bold text-slate-800">{item.name}</td>
-              <td className="p-3.5 text-slate-600">{item.category}</td>
-              <td className="p-3.5 text-slate-600">{item.reportedBy}</td>
-              <td className="p-3.5 text-slate-500">{item.lastCheck}</td>
-              <td className="p-3.5">
-                <span
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                    item.status === 'Baik'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : item.status === 'Dalam Perawatan'
-                      ? 'bg-blue-50 text-blue-800 border-blue-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}
-                >
-                  {item.status}
-                </span>
-              </td>
-              <td className="p-3.5 text-right">
-                <button
-                  onClick={() => toggleSarprasStatus(item.id)}
-                  className="text-xs bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 font-medium transition"
-                >
-                  Ubah Status
-                </button>
-              </td>
-            </tr>
-          ))}
-          {filteredData.length === 0 && (
-            <tr>
-              <td colSpan={7} className="text-center p-8 text-slate-400">
-                Tidak ditemukan data sarpras yang sesuai.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-</div>
-
-
-);
+  );
 }
