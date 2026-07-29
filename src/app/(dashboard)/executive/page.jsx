@@ -9,8 +9,6 @@ import {
   GraduationCap,
   Wallet,
   Building,
-  TrendingUp,
-  AlertCircle,
   CheckCircle2,
   Calendar,
   ShieldCheck,
@@ -21,7 +19,6 @@ import {
   Clock,
   Compass,
   Moon,
-  Sun,
   Sparkles,
 } from 'lucide-react';
 
@@ -45,24 +42,44 @@ const SPP_SUMMARY_DETAIL = [
 
 // Data Jadwal Sholat (WIB)
 const PRAYER_TIMES = [
-  { name: 'Subuh', time: '04:42' },
-  { name: 'Dzuhur', time: '12:02', isNext: true },
-  { name: 'Ashar', time: '15:24' },
-  { name: 'Maghrib', time: '18:01' },
-  { name: 'Isya', time: '19:14' },
+  { name: 'Subuh', time: '04:42', minutes: 4 * 60 + 42 },
+  { name: 'Dzuhur', time: '12:02', minutes: 12 * 60 + 2 },
+  { name: 'Ashar', time: '15:24', minutes: 15 * 60 + 24 },
+  { name: 'Maghrib', time: '18:01', minutes: 18 * 60 + 1 },
+  { name: 'Isya', time: '19:14', minutes: 19 * 60 + 14 },
 ];
 
 export default function ExecutiveDashboard() {
   const router = useRouter();
+  const [userSession, setUserSession] = useState({
+    role: 'kepsek',
+    name: 'H. Ahmad Dahlan, M.Pd',
+    title: 'Kepala Sekolah',
+  });
+
   const [totalStudentsCount, setTotalStudentsCount] = useState(300);
   const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
   const [isSppModalOpen, setIsSppModalOpen] = useState(false);
-
-  // Realtime Digital Clock
   const [currentTime, setCurrentTime] = useState('');
+  const [activePrayerIndex, setActivePrayerIndex] = useState(4); // Default ISYA
+  const [nextPrayerLabel, setNextPrayerLabel] = useState('Menuju Subuh: ~8 Jam');
 
   useEffect(() => {
-    const updateTime = () => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user_session');
+      if (stored) {
+        try {
+          setUserSession(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  // Realtime Digital Clock & Dynamic Prayer Time Logic
+  useEffect(() => {
+    const updateTimeAndPrayer = () => {
       const now = new Date();
       setCurrentTime(
         now.toLocaleTimeString('id-ID', {
@@ -72,15 +89,41 @@ export default function ExecutiveDashboard() {
           hour12: false,
         }) + ' WIB'
       );
+
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // Penentuan Waktu Sholat Aktif Presisi
+      if (currentMinutes >= 19 * 60 + 14 || currentMinutes < 4 * 60 + 42) {
+        setActivePrayerIndex(4); // Isya (Jam 19:14 ke atas)
+        setNextPrayerLabel('Waktu Isya Selesai / Menuju Subuh');
+      } else if (currentMinutes >= 18 * 60 + 1) {
+        setActivePrayerIndex(3); // Maghrib
+        setNextPrayerLabel('Menuju Isya: ~15 Menit');
+      } else if (currentMinutes >= 15 * 60 + 24) {
+        setActivePrayerIndex(2); // Ashar
+        setNextPrayerLabel('Menuju Maghrib: ~2 Jam');
+      } else if (currentMinutes >= 12 * 60 + 2) {
+        setActivePrayerIndex(1); // Dzuhur
+        setNextPrayerLabel('Menuju Ashar: ~3 Jam');
+      } else {
+        setActivePrayerIndex(0); // Subuh
+        setNextPrayerLabel('Menuju Dzuhur: ~7 Jam');
+      }
     };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
+
+    updateTimeAndPrayer();
+    const interval = setInterval(updateTimeAndPrayer, 1000);
     return () => clearInterval(interval);
   }, []);
 
   // Fetch count live dari Supabase
   useEffect(() => {
     const fetchTotalStudents = async () => {
+      if (userSession.role === 'guru') {
+        setTotalStudentsCount(50); // Khusus Kelas 4
+        return;
+      }
+
       const { count, error } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true });
@@ -90,38 +133,40 @@ export default function ExecutiveDashboard() {
       }
     };
     fetchTotalStudents();
-  }, []);
+  }, [userSession.role]);
+
+  const isTeacher = userSession.role === 'guru';
 
   const SUMMARY_METRICS = [
     {
-      title: 'Total Siswa Terdaftar',
-      value: `${totalStudentsCount} Siswa`,
-      subtext: 'Terbagi di 6 Paralel Kelas Utama',
+      title: isTeacher ? 'Siswa Kelas Binaan (Kelas 4)' : 'Total Siswa Terdaftar',
+      value: `${isTeacher ? 50 : totalStudentsCount} Siswa`,
+      subtext: isTeacher ? 'Kelas 4 (Hamzah) - Ustadz Abdullah' : 'Terbagi di 6 Paralel Kelas Utama',
       change: '100% Terverifikasi Supabase',
       isPositive: true,
       icon: GraduationCap,
       iconBg: 'bg-emerald-100 text-emerald-800',
-      onClick: () => router.push('/students'),
+      onClick: () => router.push(isTeacher ? '/attendance' : '/students'),
     },
     {
-      title: 'Kehadiran Guru & Wali Kelas',
-      value: '98.0%',
-      subtext: '48 / 49 Pendidik Hadir (Klik Rincian)',
+      title: isTeacher ? 'Kehadiran Kelas 4 Hari Ini' : 'Kehadiran Guru & Wali Kelas',
+      value: isTeacher ? '100%' : '98.0%',
+      subtext: isTeacher ? '50 / 50 Murid Hadir Lengkap' : '48 / 49 Pendidik Hadir (Klik Rincian)',
       change: 'Presensi Lengkap',
       isPositive: true,
       icon: Users,
       iconBg: 'bg-teal-100 text-teal-800',
-      onClick: () => setIsTeachersModalOpen(true),
+      onClick: () => (isTeacher ? router.push('/attendance') : setIsTeachersModalOpen(true)),
     },
     {
-      title: 'Capaian SPP Bulan Ini',
-      value: '88.5%',
-      subtext: 'Rp 142.500.000 (Klik Rincian)',
-      change: '+4.5% target bulanan',
+      title: isTeacher ? 'Capaian SPP Kelas 4' : 'Capaian SPP Bulan Ini',
+      value: isTeacher ? '96.0%' : '88.5%',
+      subtext: isTeacher ? 'Rp 24.000.000 (48/50 Murid)' : 'Rp 142.500.000 (Klik Rincian)',
+      change: isTeacher ? 'Sisa 2 Murid Belum Lunas' : '+4.5% target bulanan',
       isPositive: true,
       icon: Wallet,
       iconBg: 'bg-amber-100 text-amber-800',
-      onClick: () => setIsSppModalOpen(true),
+      onClick: () => (isTeacher ? router.push('/finance') : setIsSppModalOpen(true)),
     },
     {
       title: 'Laporan Sarpras Aktif',
@@ -142,10 +187,16 @@ export default function ExecutiveDashboard() {
         <div>
           <h1 className="text-xl font-black text-emerald-950 tracking-tight flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-emerald-700" />
-            <span>Executive Command Dashboard (Kepala Sekolah)</span>
+            <span>
+              {isTeacher
+                ? 'Dashboard Wali Kelas - Kelas 4 (Hamzah)'
+                : 'Executive Command Dashboard (Kepala Sekolah)'}
+            </span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
-            Pusat monitoring agregat operasional, presensi wali kelas, dan data seluruh {totalStudentsCount} siswa SDIT Al Ihsan.
+            {isTeacher
+              ? 'Pusat pemantauan presensi dan progres akademik siswa Kelas 4 (Hamzah).'
+              : `Pusat monitoring agregat operasional, presensi wali kelas, dan data seluruh ${totalStudentsCount} siswa SDIT Al Ihsan.`}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-black text-emerald-900 shadow-sm">
@@ -156,7 +207,6 @@ export default function ExecutiveDashboard() {
 
       {/* WIDGET ISLAMI: JAM DIGITAL REALTIME & JADWAL SHOLAT BERANIMASI */}
       <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white p-5 rounded-2xl border-2 border-amber-400 shadow-lg relative overflow-hidden">
-        {/* Pattern Background Overlay */}
         <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center justify-center pr-6">
           <Compass className="w-64 h-64 text-amber-300" />
         </div>
@@ -173,37 +223,44 @@ export default function ExecutiveDashboard() {
                 Waktu Lokal Sekolah
               </p>
               <h2 className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
-                {currentTime || '14:27:52 WIB'}
+                {currentTime || '19:54:43 WIB'}
               </h2>
             </div>
           </div>
 
-          {/* Prayer Times Bar (Animasi Glowing pada Sholat Berikutnya) */}
+          {/* Prayer Times Bar (Isya Aktif Otomatis Jam 19:54) */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-black text-amber-300 flex items-center gap-1.5">
                 <Moon className="w-3.5 h-3.5 text-amber-400" />
                 <span>JADWAL SHOLAT HARI INI (WILAYAH DEPOK & SEKITARNYA)</span>
               </p>
-              <span className="text-[10px] font-bold text-emerald-200">Menuju Dzuhur: ~15 Menit</span>
+              <span className="text-[10px] font-bold text-emerald-200">{nextPrayerLabel}</span>
             </div>
 
             <div className="grid grid-cols-5 gap-2">
-              {PRAYER_TIMES.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`p-2 rounded-xl text-center transition-all ${
-                    item.isNext
-                      ? 'bg-amber-400 text-slate-950 font-black shadow-lg scale-105 ring-2 ring-amber-300 animate-pulse'
-                      : 'bg-emerald-900/80 border border-emerald-700 text-slate-100 font-bold'
-                  }`}
-                >
-                  <p className={`text-[10px] ${item.isNext ? 'text-slate-900 font-black' : 'text-emerald-300 font-bold'}`}>
-                    {item.name}
-                  </p>
-                  <p className="text-xs sm:text-sm font-black font-mono mt-0.5">{item.time}</p>
-                </div>
-              ))}
+              {PRAYER_TIMES.map((item, idx) => {
+                const isCurrentActive = idx === activePrayerIndex;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded-xl text-center transition-all ${
+                      isCurrentActive
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-lg scale-105 ring-2 ring-amber-300 animate-pulse'
+                        : 'bg-emerald-900/80 border border-emerald-700 text-slate-100 font-bold'
+                    }`}
+                  >
+                    <p
+                      className={`text-[10px] ${
+                        isCurrentActive ? 'text-slate-900 font-black' : 'text-emerald-300 font-bold'
+                      }`}
+                    >
+                      {item.name}
+                    </p>
+                    <p className="text-xs sm:text-sm font-black font-mono mt-0.5">{item.time}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -215,9 +272,7 @@ export default function ExecutiveDashboard() {
           <div
             key={idx}
             onClick={metric.onClick}
-            className={`${
-              metric.onClick ? 'cursor-pointer hover:scale-[1.02] transition-all' : ''
-            }`}
+            className={`${metric.onClick ? 'cursor-pointer hover:scale-[1.02] transition-all' : ''}`}
           >
             <KPICard {...metric} />
           </div>
@@ -231,14 +286,18 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3">
             <div>
               <h2 className="text-sm font-black text-emerald-950">
-                Monitoring Presensi Wali Kelas & Kelas Binaan
+                {isTeacher
+                  ? 'Ringkasan Presensi Kelas Binaan: Kelas 4 (Hamzah)'
+                  : 'Monitoring Presensi Wali Kelas & Kelas Binaan'}
               </h2>
               <p className="text-xs font-bold text-slate-600">
-                Status penginputan data siswa realtime oleh masing-masing guru
+                {isTeacher
+                  ? 'Status penginputan presensi harian oleh Ustadz Abdullah'
+                  : 'Status penginputan data siswa realtime oleh masing-masing guru'}
               </p>
             </div>
             <span className="text-xs font-black text-emerald-900 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full">
-              6/6 Kelas Terdata
+              {isTeacher ? 'Kelas Binaan Aktif' : '6/6 Kelas Terdata'}
             </span>
           </div>
 
@@ -265,28 +324,33 @@ export default function ExecutiveDashboard() {
                     </span>
                   </td>
                 </tr>
-                <tr className="hover:bg-emerald-50/50">
-                  <td className="p-2.5 font-black text-slate-900">Ustadzah Rahma</td>
-                  <td className="p-2.5 text-emerald-800 font-black">Kelas 1 (Abu Bakar)</td>
-                  <td className="p-2.5 text-slate-700">50 Murid</td>
-                  <td className="p-2.5 text-emerald-900 font-black">98.0%</td>
-                  <td className="p-2.5 text-center">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
-                      Selesai Input
-                    </span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-emerald-50/50">
-                  <td className="p-2.5 font-black text-slate-900">Ustadz Hasan</td>
-                  <td className="p-2.5 text-emerald-800 font-black">Kelas 6 (Al-Farisi)</td>
-                  <td className="p-2.5 text-slate-700">50 Murid</td>
-                  <td className="p-2.5 text-emerald-900 font-black">96.0%</td>
-                  <td className="p-2.5 text-center">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
-                      Selesai Input
-                    </span>
-                  </td>
-                </tr>
+
+                {!isTeacher && (
+                  <>
+                    <tr className="hover:bg-emerald-50/50">
+                      <td className="p-2.5 font-black text-slate-900">Ustadzah Rahma</td>
+                      <td className="p-2.5 text-emerald-800 font-black">Kelas 1 (Abu Bakar)</td>
+                      <td className="p-2.5 text-slate-700">50 Murid</td>
+                      <td className="p-2.5 text-emerald-900 font-black">98.0%</td>
+                      <td className="p-2.5 text-center">
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
+                          Selesai Input
+                        </span>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-emerald-50/50">
+                      <td className="p-2.5 font-black text-slate-900">Ustadz Hasan</td>
+                      <td className="p-2.5 text-emerald-800 font-black">Kelas 6 (Al-Farisi)</td>
+                      <td className="p-2.5 text-slate-700">50 Murid</td>
+                      <td className="p-2.5 text-emerald-900 font-black">96.0%</td>
+                      <td className="p-2.5 text-center">
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
+                          Selesai Input
+                        </span>
+                      </td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -295,12 +359,8 @@ export default function ExecutiveDashboard() {
         {/* Live Activity Stream */}
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="border-b-2 border-emerald-100 pb-3">
-            <h2 className="text-sm font-black text-emerald-950">
-              Aktivitas Terkini Guru
-            </h2>
-            <p className="text-xs font-bold text-slate-600">
-              Log sistem internal & operasional sekolah
-            </p>
+            <h2 className="text-sm font-black text-emerald-950">Aktivitas Terkini Guru</h2>
+            <p className="text-xs font-bold text-slate-600">Log sistem internal & operasional sekolah</p>
           </div>
 
           <div className="space-y-4 pt-1">

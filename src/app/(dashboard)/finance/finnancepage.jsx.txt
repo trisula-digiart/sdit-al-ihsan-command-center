@@ -4,11 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import {
   Wallet,
+  GraduationCap,
   ChevronRight,
   X,
   CreditCard,
+  Building,
+  CheckCircle2,
+  AlertCircle,
   Search,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
 const SPP_BY_CLASS = [
@@ -25,38 +30,6 @@ export default function FinanceSPPPage() {
   const [modalStudents, setModalStudents] = useState([]);
   const [loadingModal, setLoadingModal] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
-  const [userSession, setUserSession] = useState({
-    role: 'kepsek',
-    name: 'H. Ahmad Dahlan, M.Pd',
-  });
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('user_session');
-      if (stored) {
-        try {
-          setUserSession(JSON.parse(stored));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-  }, []);
-
-  const isTeacher = userSession.role === 'guru';
-
-  // Filter Data Tabel SPP Khusus Guru vs Kepsek
-  const filteredSppList = isTeacher
-    ? SPP_BY_CLASS.filter((item) => item.class_name.includes('Kelas 4'))
-    : SPP_BY_CLASS;
-
-  // Hitung Metrik Overview Ringkasan Berdasarkan Peran
-  const totalCollected = filteredSppList.reduce((acc, curr) => acc + curr.collected, 0);
-  const totalPaidStudents = filteredSppList.reduce((acc, curr) => acc + curr.paid_students, 0);
-  const totalStudents = filteredSppList.reduce((acc, curr) => acc + curr.total_students, 0);
-  const totalUnpaidStudents = totalStudents - totalPaidStudents;
-  const targetAmount = isTeacher ? 25000000 : 150000000;
-  const overallPct = ((totalCollected / targetAmount) * 100).toFixed(1);
 
   // Fetch seluruh siswa kelas tersebut saat modal dibuka
   useEffect(() => {
@@ -72,6 +45,7 @@ export default function FinanceSPPPage() {
           .order('full_name', { ascending: true });
 
         if (!error && data) {
+          // Buat simulasi status lunas dinamis berdasarkan urutan data
           const mappedData = data.map((st, idx) => ({
             ...st,
             spp_status: idx % 10 === 0 || idx % 12 === 0 ? 'Belum Lunas' : 'Lunas',
@@ -89,10 +63,9 @@ export default function FinanceSPPPage() {
     fetchClassStudents();
   }, [selectedClassDetail]);
 
-  const filteredModalStudents = modalStudents.filter(
-    (st) =>
-      st.full_name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      st.nisn.includes(modalSearchQuery)
+  const filteredModalStudents = modalStudents.filter((st) =>
+    st.full_name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+    st.nisn.includes(modalSearchQuery)
   );
 
   return (
@@ -102,44 +75,32 @@ export default function FinanceSPPPage() {
         <div>
           <h1 className="text-xl font-black text-emerald-950 flex items-center gap-2">
             <Wallet className="w-6 h-6 text-emerald-700" />
-            <span>
-              {isTeacher
-                ? 'Keuangan & SPP Siswa - Kelas 4 (Hamzah)'
-                : 'Keuangan & Rekapitulasi SPP Siswa'}
-            </span>
+            <span>Keuangan & Rekapitulasi SPP Siswa</span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
-            {isTeacher
-              ? 'Monitoring pembayaran SPP bulanan siswa binaan Kelas 4 (Hamzah).'
-              : 'Monitoring pembayaran SPP bulanan terintegrasi dari masing-masing Wali Kelas SDIT Al Ihsan.'}
+            Monitoring pembayaran SPP bulanan terintegrasi dari masing-masing Wali Kelas SDIT Al Ihsan.
           </p>
         </div>
         <div className="px-3.5 py-2 bg-amber-100 border-2 border-amber-300 rounded-xl text-amber-950 font-black text-xs shadow-sm">
-          Target Juli 2026: Rp {targetAmount.toLocaleString('id-ID')}
+          Target Juli 2026: Rp 150.000.000
         </div>
       </div>
 
-      {/* Overview Cards (Dinamis Sesuai Login Guru vs Kepsek) */}
+      {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm">
           <p className="text-xs font-bold text-slate-700">Total SPP Terkumpul</p>
-          <p className="text-2xl font-black text-emerald-950 mt-1">
-            Rp {totalCollected.toLocaleString('id-ID')}
-          </p>
-          <p className="text-[10px] font-black text-emerald-700 mt-1">
-            {overallPct}% dari target {isTeacher ? 'kelas' : 'bulanan'}
-          </p>
+          <p className="text-2xl font-black text-emerald-950 mt-1">Rp 134.500.000</p>
+          <p className="text-[10px] font-black text-emerald-700 mt-1">89.6% dari total target bulanan</p>
         </div>
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm">
           <p className="text-xs font-bold text-slate-700">Siswa Sudah Lunas</p>
-          <p className="text-2xl font-black text-teal-950 mt-1">{totalPaidStudents} Siswa</p>
-          <p className="text-[10px] font-black text-teal-700 mt-1">
-            Dari total {totalStudents} Siswa Terdaftar
-          </p>
+          <p className="text-2xl font-black text-teal-950 mt-1">268 Siswa</p>
+          <p className="text-[10px] font-black text-teal-700 mt-1">Dari total 300 Siswa Terdaftar</p>
         </div>
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm">
           <p className="text-xs font-bold text-slate-700">Siswa Belum Lunas</p>
-          <p className="text-2xl font-black text-amber-950 mt-1">{totalUnpaidStudents} Siswa</p>
+          <p className="text-2xl font-black text-amber-950 mt-1">32 Siswa</p>
           <p className="text-[10px] font-black text-amber-700 mt-1">Proses penagihan oleh Wali Kelas</p>
         </div>
       </div>
@@ -148,12 +109,10 @@ export default function FinanceSPPPage() {
       <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3">
           <h2 className="text-sm font-black text-emerald-950">
-            {isTeacher
-              ? 'Capaian Pembayaran SPP Kelas 4 (Hamzah)'
-              : 'Capaian Pembayaran SPP Per Rombel Kelas (Klik Tombol Untuk Detail Seluruh Siswa)'}
+            Capaian Pembayaran SPP Per Rombel Kelas (Klik Tombol Untuk Detail Seluruh Siswa)
           </h2>
           <span className="text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-full">
-            {isTeacher ? '1 Kelas Terdata' : '6 Kelas Terdata'}
+            6 Kelas Terdata
           </span>
         </div>
 
@@ -171,7 +130,7 @@ export default function FinanceSPPPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-100">
-              {filteredSppList.map((item, idx) => (
+              {SPP_BY_CLASS.map((item, idx) => (
                 <tr
                   key={idx}
                   onClick={() => {
@@ -183,12 +142,8 @@ export default function FinanceSPPPage() {
                   <td className="p-3 font-black text-slate-900">{item.class_name}</td>
                   <td className="p-3 text-slate-700">{item.teacher}</td>
                   <td className="p-3 text-slate-600">Rp {item.target.toLocaleString('id-ID')}</td>
-                  <td className="p-3 text-emerald-800 font-black">
-                    Rp {item.collected.toLocaleString('id-ID')}
-                  </td>
-                  <td className="p-3 text-slate-800">
-                    {item.paid_students} / {item.total_students} Murid
-                  </td>
+                  <td className="p-3 text-emerald-800 font-black">Rp {item.collected.toLocaleString('id-ID')}</td>
+                  <td className="p-3 text-slate-800">{item.paid_students} / {item.total_students} Murid</td>
                   <td className="p-3 text-center">
                     <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full font-black text-[10px]">
                       {item.pct}%
@@ -229,24 +184,12 @@ export default function FinanceSPPPage() {
             <div className="p-5 space-y-4 font-bold text-xs overflow-y-auto flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
                 <div>
-                  <p className="text-slate-900">
-                    Wali Kelas:{' '}
-                    <span className="text-emerald-950 font-black">
-                      {selectedClassDetail.teacher}
-                    </span>
-                  </p>
-                  <p className="text-[11px] text-slate-600">
-                    Total Siswa Terdaftar: {modalStudents.length} Siswa
-                  </p>
+                  <p className="text-slate-900">Wali Kelas: <span className="text-emerald-950 font-black">{selectedClassDetail.teacher}</span></p>
+                  <p className="text-[11px] text-slate-600">Total Siswa Terdaftar: {modalStudents.length} Siswa</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-emerald-950 font-black text-sm">
-                    Capaian: {selectedClassDetail.pct}%
-                  </p>
-                  <p className="text-[11px] text-emerald-800 font-extrabold">
-                    {selectedClassDetail.paid_students} Siswa Lunas |{' '}
-                    {selectedClassDetail.total_students - selectedClassDetail.paid_students} Belum Lunas
-                  </p>
+                  <p className="text-emerald-950 font-black text-sm">Capaian: {selectedClassDetail.pct}%</p>
+                  <p className="text-[11px] text-emerald-800 font-extrabold">{selectedClassDetail.paid_students} Siswa Lunas | {selectedClassDetail.total_students - selectedClassDetail.paid_students} Belum Lunas</p>
                 </div>
               </div>
 
@@ -290,9 +233,7 @@ export default function FinanceSPPPage() {
                           <td className="p-2.5 text-slate-500 font-mono">{idx + 1}</td>
                           <td className="p-2.5 text-emerald-900 font-mono font-black">{st.nisn}</td>
                           <td className="p-2.5 font-black text-slate-900">{st.full_name}</td>
-                          <td className="p-2.5 text-slate-700">
-                            Rp {st.spp_amount.toLocaleString('id-ID')}
-                          </td>
+                          <td className="p-2.5 text-slate-700">Rp {st.spp_amount.toLocaleString('id-ID')}</td>
                           <td className="p-2.5 text-center">
                             <span
                               className={`px-2.5 py-1 rounded-full font-black text-[10px] ${

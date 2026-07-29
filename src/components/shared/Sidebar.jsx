@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -23,51 +23,81 @@ const NAVIGATION_ITEMS = [
     name: 'Executive Dashboard',
     href: '/executive',
     icon: LayoutDashboard,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Data Seluruh Siswa',
     href: '/students',
     icon: GraduationCap,
+    roles: ['kepsek'], // HANYA KEPSEK
   },
   {
     name: 'Data Absensi Guru & Siswa',
     href: '/attendance',
     icon: CalendarCheck2,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Keuangan & SPP',
     href: '/finance',
     icon: Wallet,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Sarpras & Fasilitas',
     href: '/sarpras',
     icon: Building,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Internal Chat Hub',
     href: '/chat',
     icon: MessageSquare,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Document Generator',
     href: '/documents',
     icon: FileText,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Event Calendar',
     href: '/calendar',
     icon: Calendar,
+    roles: ['kepsek', 'guru'],
   },
   {
     name: 'Pengaturan Sekolah',
     href: '/settings',
     icon: Settings,
+    roles: ['kepsek'], // HANYA KEPSEK
   },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState('kepsek');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user_session');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.role) {
+            setUserRole(parsed.role);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  const filteredNavItems = NAVIGATION_ITEMS.filter((item) =>
+    item.roles.includes(userRole)
+  );
 
   return (
     <aside className="print:hidden hidden lg:flex flex-col w-64 bg-white text-emerald-950 h-screen border-r-2 border-emerald-200 shrink-0 sticky top-0 shadow-md">
@@ -87,13 +117,13 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation Links - High Legibility */}
+      {/* Navigation Links - Filtered by Role */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
         <div className="px-3 pb-2 text-[11px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
           <span>Navigasi Utama</span>
         </div>
-        {NAVIGATION_ITEMS.map((item) => {
+        {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
 
@@ -130,6 +160,11 @@ export default function Sidebar() {
 
         <Link
           href="/login"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('user_session');
+            }
+          }}
           className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-rose-700 hover:text-rose-900 hover:bg-rose-100/70 transition-all duration-150"
         >
           <LogOut className="w-4 h-4 shrink-0 text-rose-600" />
