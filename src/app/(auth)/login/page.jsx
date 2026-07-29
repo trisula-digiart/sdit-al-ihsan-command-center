@@ -79,25 +79,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-slate-900 text-slate-100 font-sans">
-      {/* KANVAS KIRI: Visual Banner Islami Enterprise Grid (Hidden di Screen HP Kecil) */}
-      <div className="hidden lg:flex lg:w-3/5 relative bg-emerald-950 overflow-hidden flex-col justify-between p-12 border-r-2 border-emerald-800/40">
-        {/* Background Overlay Image Islami Modern */}
+    <div className="min-h-screen w-full flex bg-slate-950 text-slate-100 font-sans">
+      {/* SISI KIRI: FULL GAMBAR ISLAMI HIGH-RESOLUTION DENGAN OVERLAY MEWAH */}
+      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12 border-r-2 border-emerald-800/40">
+        {/* Full Image Background Arsitektur Islami Megah */}
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay scale-105 transition-transform duration-10000 hover:scale-100"
+          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-10000 hover:scale-100"
           style={{
             backgroundImage:
               'url("https://images.unsplash.com/photo-1542816417-0983cbe82752?q=80&w=2070&auto=format&fit=crop")',
           }}
         />
 
-        {/* Decorative Radial Pattern */}
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/70 to-emerald-900/40 z-10" />
+        {/* Gradient Overlay Transparan Bernuansa Emerald & Shadow */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/95 via-emerald-950/80 to-slate-950/60 z-10" />
 
-        {/* Brand Header Top */}
+        {/* Top Header Branding (Dynamic Supabase) */}
         <div className="relative z-20 flex items-center gap-3">
           {schoolSettings.logo_url ? (
-            <div className="w-12 h-12 rounded-2xl bg-white/95 border-2 border-emerald-400/50 p-1 flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-white/95 border-2 border-emerald-400/50 p-1 flex items-center justify-center shadow-2xl overflow-hidden shrink-0">
               <img
                 src={schoolSettings.logo_url}
                 alt="Logo Sekolah"
@@ -105,81 +105,81 @@ export default function LoginPage() {
               />
             </div>
           ) : (
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 border-2 border-emerald-400/50 flex items-center justify-center font-black text-amber-300 text-xl shadow-lg shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-800 border-2 border-emerald-400/50 flex items-center justify-center font-black text-amber-300 text-xl shadow-2xl shrink-0">
               AI
             </div>
           )}
 
           <div>
-            <h2 className="font-black text-base tracking-wider text-white uppercase">
+            <h2 className="font-black text-base tracking-wider text-white uppercase drop-shadow-md">
               {schoolSettings.school_name}
             </h2>
             <p className="text-[11px] font-extrabold text-emerald-300 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span>Integrated Command Center System</span>
             </p>
           </div>
         </div>
 
-        {/* Hero Text Quotes Section */}
-        <div className="relative z-20 space-y-4 max-w-xl my-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-800/80 border border-emerald-500/50 text-amber-300 text-xs font-black shadow-md backdrop-blur-md">
-            <BookOpen className="w-3.5 h-3.5" />
+        {/* Hero Text Statement Section */}
+        <div className="relative z-20 space-y-5 max-w-xl my-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-900/80 border border-emerald-500/60 text-amber-300 text-xs font-black shadow-lg backdrop-blur-md">
+            <BookOpen className="w-4 h-4" />
             <span>Pendidikan Islami Terpadu & Modern</span>
           </div>
 
-          <h1 className="text-3xl xl:text-4xl font-black text-white leading-tight tracking-tight">
+          <h1 className="text-3xl xl:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-lg">
             Mewujudkan Generasi Rabbani Berakhlak Mulia & Unggul Berbasis Digital.
           </h1>
 
-          <p className="text-xs font-bold text-emerald-200/90 leading-relaxed">
+          <p className="text-xs font-bold text-emerald-100/90 leading-relaxed drop-shadow-sm">
             Sistem tata kelola komprehensif untuk pemantauan akademik harian, presensi otomatis, transparansi SPP, dan pengelolaan dokumen resmi sekolah.
           </p>
 
           <div className="pt-4 grid grid-cols-2 gap-4">
-            <div className="p-3.5 bg-emerald-900/60 border border-emerald-700/50 rounded-2xl backdrop-blur-sm">
-              <p className="text-lg font-black text-white">100% Cloud</p>
-              <p className="text-[10px] font-bold text-emerald-300">Persistensi Database Supabase</p>
+            <div className="p-4 bg-emerald-950/70 border border-emerald-700/60 rounded-2xl backdrop-blur-md shadow-xl">
+              <p className="text-xl font-black text-amber-300">100% Cloud</p>
+              <p className="text-[10px] font-extrabold text-emerald-200 mt-0.5">Persistensi Database Supabase</p>
             </div>
-            <div className="p-3.5 bg-emerald-900/60 border border-emerald-700/50 rounded-2xl backdrop-blur-sm">
-              <p className="text-lg font-black text-white">RBAC System</p>
-              <p className="text-[10px] font-bold text-emerald-300">Akses Terisolasi Per Role</p>
+            <div className="p-4 bg-emerald-950/70 border border-emerald-700/60 rounded-2xl backdrop-blur-md shadow-xl">
+              <p className="text-xl font-black text-amber-300">RBAC System</p>
+              <p className="text-[10px] font-extrabold text-emerald-200 mt-0.5">Akses Terisolasi Per Role</p>
             </div>
           </div>
         </div>
 
         {/* Footer Info Left */}
-        <div className="relative z-20 text-[11px] font-bold text-emerald-400 flex items-center justify-between border-t border-emerald-800/60 pt-4">
+        <div className="relative z-20 text-[11px] font-bold text-emerald-300 flex items-center justify-between border-t border-emerald-800/60 pt-4">
           <span>&copy; 2026 {schoolSettings.school_name}</span>
-          <span className="flex items-center gap-1 text-emerald-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Verified Commercial System</span>
+          <span className="flex items-center gap-1.5 text-emerald-200 font-black">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Verified Enterprise System</span>
           </span>
         </div>
       </div>
 
-      {/* KANVAS KANAN: Form Login Card Enterprise */}
-      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 md:p-12 bg-slate-900 relative">
+      {/* SISI KANAN: FORM LOGIN CARD ENTERPRISE */}
+      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 md:p-12 bg-slate-950 relative">
         <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border-2 border-emerald-200 text-slate-900 space-y-6 relative z-10">
           
-          {/* Header Portal Form */}
+          {/* Header Form Portal */}
           <div className="space-y-2 border-b-2 border-emerald-100 pb-5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
                 Portal Akses Utama
               </span>
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
             </div>
 
             <h2 className="text-2xl font-black text-emerald-950 tracking-tight">
-              Selamat Datang Kembali
+              Selamat Datang
             </h2>
             <p className="text-xs font-bold text-slate-600">
               Silakan pilih peran dan masukkan kredensial akun Anda.
             </p>
           </div>
 
-          {/* Form Utama */}
+          {/* Form Login */}
           <form onSubmit={handleLogin} className="space-y-4 text-xs font-bold">
             <div>
               <label className="block text-slate-900 font-black mb-1.5">
