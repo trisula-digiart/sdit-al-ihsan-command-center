@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [role, setRole] = useState('kepsek');
   const [email, setEmail] = useState('kepsek@sditalihsan.sch.id');
   const [password, setPassword] = useState('••••••••');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [schoolSettings, setSchoolSettings] = useState({
     school_name: 'SDIT AL IHSAN INTEGRATED SCHOOL',
@@ -57,23 +58,35 @@ export default function LoginPage() {
     }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const session = {
-      role: role,
-      name: role === 'kepsek' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
-      title: role === 'kepsek' ? 'Kepala Sekolah' : 'Guru / Wali Kelas 4',
-      email: email,
-    };
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('user_session', JSON.stringify(session));
-    }
+    try {
+      const session = {
+        role: role,
+        name: role === 'kepsek' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
+        title: role === 'kepsek' ? 'Kepala Sekolah' : 'Guru / Wali Kelas 4',
+        email: email,
+      };
 
-    if (role === 'kepsek') {
-      router.push('/executive');
-    } else {
-      router.push('/attendance');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_session', JSON.stringify(session));
+      }
+
+      // Navigasi Rute Berdasarkan Peran User
+      if (role === 'kepsek') {
+        await router.push('/executive');
+      } else {
+        await router.push('/attendance');
+      }
+      
+      router.refresh();
+    } catch (error) {
+      console.error('Error during login navigation:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -224,9 +237,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-700/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] mt-2"
+              disabled={isSubmitting}
+              className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-700/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] mt-2 cursor-pointer disabled:opacity-50"
             >
-              <span>Masuk Sistem Command Center</span>
+              <span>{isSubmitting ? 'Memproses...' : 'Masuk Sistem Command Center'}</span>
               <ArrowRight className="w-4 h-4 text-amber-300" />
             </button>
 
