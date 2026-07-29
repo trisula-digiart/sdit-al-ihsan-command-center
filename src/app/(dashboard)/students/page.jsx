@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import BulkImportModal from '@/components/shared/BulkImportModal';
 import {
   GraduationCap,
   Users,
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   Loader2,
   Phone,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const CLASSES = [
@@ -32,6 +34,7 @@ export default function StudentsMasterPage() {
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -186,23 +189,32 @@ export default function StudentsMasterPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Tombol Import Bulk Data CSV */}
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-amber-300" />
+            <span>Import Bulk CSV</span>
+          </button>
+
           {/* Tombol Print Data Siswa */}
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4 text-amber-300" />
-            <span>Cetak / Export Data</span>
+            <span>Cetak / Export</span>
           </button>
 
           {/* Tombol Tambah Siswa */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
+            className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Tambah Siswa Binaan</span>
+            <span>Tambah Siswa</span>
           </button>
         </div>
       </div>
@@ -262,7 +274,7 @@ export default function StudentsMasterPage() {
               <button
                 key={cls}
                 onClick={() => setSelectedClass(cls)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap cursor-pointer ${
                   selectedClass === cls
                     ? 'bg-emerald-700 text-white shadow-md'
                     : 'bg-emerald-50 text-slate-800 hover:bg-emerald-100 border border-emerald-200'
@@ -346,6 +358,13 @@ export default function StudentsMasterPage() {
           </table>
         </div>
       </div>
+
+      {/* MODAL BULK IMPORT DATA CSV */}
+      <BulkImportModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={fetchStudents}
+      />
 
       {/* MODAL TAMBAH SISWA BINAAN BARU (SIMPAN KE SUPABASE) */}
       {isAddModalOpen && (
