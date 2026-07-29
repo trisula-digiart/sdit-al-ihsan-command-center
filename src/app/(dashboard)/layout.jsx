@@ -1,27 +1,69 @@
-'use client';
+import React from "react";
+import { HeaderNav } from "@/components/dashboard/HeaderNav";
+import { createServerClient } from "@/lib/supabase/server";
+import AutoLogoutListener from "@/components/shared/AutoLogoutListener";
 
-import React from 'react';
-import Sidebar from '@/components/shared/Sidebar';
-import Header from '@/components/shared/Header';
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const supabase = await createServerClient();
 
-export default function DashboardLayout({ children }) {
+  // Ambil data user yang sedang login via getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let userRole: "HEAD_AREA" | "MUH" | "UNIT" = "UNIT";
+  let userName = "User Perbankan";
+  let unitName = "";
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select(`
+        full_name,
+        role,
+        units:unit_id (
+          kcp_name,
+          sentra_mikro
+        )
+      `)
+      .eq("id", user.id)
+      .single();
+
+    if (profile) {
+      userRole = profile.role as any;
+      userName = profile.full_name;
+      if (profile.units) {
+        const u = profile.units as any;
+        unitName = `${u.kcp_name} (${u.sentra_mikro})`;
+      }
+    }
+  }
+
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Sidebar Navigation */}
-      <Sidebar />
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
+      {/* Client Listener untuk Auto Logout 30 Menit */}
+      <AutoLogoutListener />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header */}
-        <Header />
+      {/* Header Sticky Navigation dengan Full Width Padding */}
+      <HeaderNav
+        userRole={userRole}
+        userName={userName}
+        unitName={unitName}
+      />
 
-        {/* Dynamic Page Views - Dipandu max-w-[1600px] agar pas & presisi di layar lebar */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="max-w-[1600px] w-full mx-auto space-y-6">
-            {children}
-          </div>
-        </main>
-      </div>
+      {/* Main Content Area - Full-Width Responsive */}
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {children}
+      </main>
+
+      {/* Global Footer Minimalis */}
+      <footer className="border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500 font-medium">
+        SDIT AL IHSAN Command Center Portal • Enterprise Monitoring & Operational System
+      </footer>
     </div>
   );
 }

@@ -1,14 +1,18 @@
-import '../globals.css';
+import React from 'react';
+import '@/app/globals.css';
 
 export const metadata = {
-  title: 'Login - SDIT Al Ihsan Command Center',
-  description: 'Halaman Masuk Otentikasi SDIT Al Ihsan',
+  title: 'SDIT AL IHSAN - Integrated Command Center System',
+  description:
+    'Sistem tata kelola komprehensif SDIT Al Ihsan untuk pemantauan akademik harian, presensi otomatis, transparansi SPP, dan pengelolaan dokumen resmi sekolah.',
 };
 
-export default function AuthLayout({ children }) {
+export default function RootLayout({ children }) {
   return (
-    <div className="min-h-screen bg-slate-50 antialiased">
-      {children}
-    </div>
+    <html lang="id" className="dark">
+      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-emerald-600 selection:text-white">
+        {children}
+      </body>
+    </html>
   );
 }
