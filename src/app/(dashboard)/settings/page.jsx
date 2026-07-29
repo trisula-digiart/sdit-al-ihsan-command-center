@@ -24,7 +24,7 @@ const INITIAL_TEACHERS = [
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('identity'); // 'identity' atau 'teachers'
+  const [activeTab, setActiveTab] = useState('identity');
 
   // State Profil Sekolah
   const [schoolInfo, setSchoolInfo] = useState({
