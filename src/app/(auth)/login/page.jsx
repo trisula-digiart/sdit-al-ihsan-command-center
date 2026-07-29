@@ -54,42 +54,41 @@ export default function LoginPage() {
     if (selectedRole === 'kepsek') {
       setEmail('kepsek@sditalihsan.sch.id');
     } else {
-      setEmail('umarkelas1@k2c.com');
+      setEmail('alikelas2@k2c.com');
     }
   };
 
-  // Helper untuk mengekstrak Nama & Kelas dari Email jika DB fallback
+  // Helper Pintar Parser Email (Deteksi Angka Kelas & Nama dari Email)
   const parseTeacherFromEmail = (inputEmail) => {
     const cleanPrefix = inputEmail.split('@')[0].toLowerCase();
     
-    let teacherName = 'Ustadz Guru';
+    let teacherName = cleanPrefix.charAt(0).toUpperCase() + cleanPrefix.slice(1);
     let assignedClass = 'Kelas 1 (Abu Bakar)';
 
-    if (cleanPrefix.includes('umar')) {
-      teacherName = 'Umar';
-      assignedClass = 'Kelas 1 (Abu Bakar)';
-    } else if (cleanPrefix.includes('rahma')) {
-      teacherName = 'Ustadzah Rahma';
-      assignedClass = 'Kelas 1 (Abu Bakar)';
-    } else if (cleanPrefix.includes('rizky')) {
-      teacherName = 'Ustadz Rizky';
+    // 1. Deteksi Angka Kelas di Email
+    if (cleanPrefix.includes('2') || cleanPrefix.includes('dua')) {
       assignedClass = 'Kelas 2 (Ali)';
-    } else if (cleanPrefix.includes('farhan')) {
-      teacherName = 'Ustadz Farhan';
+    } else if (cleanPrefix.includes('3') || cleanPrefix.includes('tiga')) {
       assignedClass = 'Kelas 3 (Thoriq)';
-    } else if (cleanPrefix.includes('guru') || cleanPrefix.includes('abdullah')) {
-      teacherName = 'Ustadz Abdullah';
+    } else if (cleanPrefix.includes('4') || cleanPrefix.includes('empat')) {
       assignedClass = 'Kelas 4 (Hamzah)';
-    } else if (cleanPrefix.includes('khadijah')) {
-      teacherName = 'Ustadzah Khadijah';
+    } else if (cleanPrefix.includes('5') || cleanPrefix.includes('lima')) {
       assignedClass = 'Kelas 5 (Mu\'adz)';
-    } else if (cleanPrefix.includes('hasan')) {
-      teacherName = 'Ustadz Hasan';
+    } else if (cleanPrefix.includes('6') || cleanPrefix.includes('enam')) {
       assignedClass = 'Kelas 6 (Al-Farisi)';
-    } else {
-      // Capitalize first letter dari email prefix
-      teacherName = cleanPrefix.charAt(0).toUpperCase() + cleanPrefix.slice(1);
+    } else if (cleanPrefix.includes('1') || cleanPrefix.includes('satu')) {
+      assignedClass = 'Kelas 1 (Abu Bakar)';
     }
+
+    // 2. Deteksi Nama Khusus jika ada
+    if (cleanPrefix.includes('umar')) teacherName = 'Umar';
+    else if (cleanPrefix.includes('ali')) teacherName = 'Ustadz Ali';
+    else if (cleanPrefix.includes('rahma')) teacherName = 'Ustadzah Rahma';
+    else if (cleanPrefix.includes('rizky')) teacherName = 'Ustadz Rizky';
+    else if (cleanPrefix.includes('farhan')) teacherName = 'Ustadz Farhan';
+    else if (cleanPrefix.includes('abdullah')) teacherName = 'Ustadz Abdullah';
+    else if (cleanPrefix.includes('khadijah')) teacherName = 'Ustadzah Khadijah';
+    else if (cleanPrefix.includes('hasan')) teacherName = 'Ustadz Hasan';
 
     return { name: teacherName, class_name: assignedClass };
   };
@@ -104,31 +103,49 @@ export default function LoginPage() {
         name: role === 'kepsek' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
         title: role === 'kepsek' ? 'Kepala Sekolah' : 'Guru / Wali Kelas',
         class_name: 'Kelas 1 (Abu Bakar)',
-        email: email,
+        email: email.trim().toLowerCase(),
       };
 
       if (role === 'guru') {
-        // 1. Coba ambil data Guru asli dari tabel Supabase `teachers` / `users`
+        const cleanEmail = email.trim().toLowerCase();
+
+        // 1. Prioritas Utama: Coba Ambil Data dari Database Supabase
         try {
           const { data: teacherData, error } = await supabase
             .from('teachers')
             .select('*')
-            .eq('email', email)
-            .single();
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
           if (!error && teacherData) {
-            sessionData.name = teacherData.name || teacherData.full_name || 'Umar';
-            sessionData.class_name = teacherData.class_name || teacherData.assigned_class || 'Kelas 1 (Abu Bakar)';
+            sessionData.name = teacherData.name || teacherData.full_name || 'Guru';
+            sessionData.class_name = teacherData.class_assigned || teacherData.class_name || 'Kelas 1 (Abu Bakar)';
             sessionData.title = `Wali Kelas - ${sessionData.class_name}`;
           } else {
-            // Fallback cerdas berdasarkan email yang diketik
-            const fallback = parseTeacherFromEmail(email);
-            sessionData.name = fallback.name;
-            sessionData.class_name = fallback.class_name;
-            sessionData.title = `Wali Kelas - ${fallback.class_name}`;
+            // 2. Cek juga dari LocalStorage Backup yang disimpan Kepsek saat mendaftarkan
+            let localMatch = null;
+            if (typeof window !== 'undefined') {
+              const stored = localStorage.getItem('custom_teachers');
+              if (stored) {
+                const parsedList = JSON.parse(stored);
+                localMatch = parsedList.find((t) => t.email.toLowerCase() === cleanEmail);
+              }
+            }
+
+            if (localMatch) {
+              sessionData.name = localMatch.name;
+              sessionData.class_name = localMatch.class_assigned || localMatch.class_name;
+              sessionData.title = `Wali Kelas - ${sessionData.class_name}`;
+            } else {
+              // 3. Fallback pintar parser email jika tidak ditemukan di DB / Local
+              const fallback = parseTeacherFromEmail(cleanEmail);
+              sessionData.name = fallback.name;
+              sessionData.class_name = fallback.class_name;
+              sessionData.title = `Wali Kelas - ${fallback.class_name}`;
+            }
           }
         } catch (dbErr) {
-          const fallback = parseTeacherFromEmail(email);
+          const fallback = parseTeacherFromEmail(cleanEmail);
           sessionData.name = fallback.name;
           sessionData.class_name = fallback.class_name;
           sessionData.title = `Wali Kelas - ${fallback.class_name}`;
@@ -137,21 +154,17 @@ export default function LoginPage() {
 
       const sessionString = JSON.stringify(sessionData);
 
-      // 2. Simpan Cookie "user_session_token" agar terbaca oleh middleware.js
+      // Simpan Cookie & LocalStorage
       document.cookie = `user_session_token=${encodeURIComponent(
         sessionString
       )}; path=/; max-age=${30 * 60}; SameSite=Lax`;
 
-      // 3. Simpan juga ke localStorage sebagai cadangan Client State
       if (typeof window !== 'undefined') {
         localStorage.setItem('user_session', sessionString);
       }
 
-      // 4. Tentukan Target Rute
-      const targetPath = role === 'kepsek' ? '/executive' : '/executive';
-
-      // 5. Hard Redirect
-      window.location.href = targetPath;
+      // Redirect ke Dashboard
+      window.location.href = role === 'kepsek' ? '/executive' : '/executive';
     } catch (error) {
       console.error('Login Execution Error:', error);
       setIsSubmitting(false);
