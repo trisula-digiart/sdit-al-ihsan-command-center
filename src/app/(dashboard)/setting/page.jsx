@@ -8,13 +8,10 @@ import {
   Users,
   Save,
   CheckCircle2,
-  ShieldCheck,
   Mail,
-  Lock,
-  BookOpen,
-  MapPin,
   User,
   Phone,
+  MapPin,
 } from 'lucide-react';
 
 const INITIAL_TEACHERS = [
