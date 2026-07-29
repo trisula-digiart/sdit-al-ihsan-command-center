@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import {
   GraduationCap,
   Search,
@@ -13,77 +14,16 @@ import {
   ShieldCheck,
   Lock,
   User,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
-const ALL_STUDENTS_DATABASE = [
-  {
-    id: '1',
-    nisn: '0128912001',
-    full_name: 'Muhammad Zaid Al-Faris',
-    gender: 'Laki-laki',
-    class_name: 'Kelas 4 (Hamzah)',
-    assigned_teacher_name: 'Ustadz Abdullah',
-    assigned_teacher_email: 'guru@sditalihsan.sch.id',
-    parent_name: 'Ahmad Fauzi',
-    parent_phone: '081299887766',
-    status: 'Aktif',
-  },
-  {
-    id: '2',
-    nisn: '0128912002',
-    full_name: 'Aisyah Humaira',
-    gender: 'Perempuan',
-    class_name: 'Kelas 4 (Hamzah)',
-    assigned_teacher_name: 'Ustadz Abdullah',
-    assigned_teacher_email: 'guru@sditalihsan.sch.id',
-    parent_name: 'Dedi Kurniawan',
-    parent_phone: '081388776655',
-    status: 'Aktif',
-  },
-  {
-    id: '3',
-    nisn: '0128912003',
-    full_name: 'Fatimah Az-Zahra',
-    gender: 'Perempuan',
-    class_name: 'Kelas 4 (Hamzah)',
-    assigned_teacher_name: 'Ustadz Abdullah',
-    assigned_teacher_email: 'guru@sditalihsan.sch.id',
-    parent_name: 'H. Abdullah',
-    parent_phone: '081577665544',
-    status: 'Aktif',
-  },
-  {
-    id: '4',
-    nisn: '0128912004',
-    full_name: 'Umar Abdul Aziz',
-    gender: 'Laki-laki',
-    class_name: 'Kelas 1 (Abu Bakar)',
-    assigned_teacher_name: 'Ustadzah Rahma',
-    assigned_teacher_email: 'rahma@sditalihsan.sch.id',
-    parent_name: 'Budi Santoso',
-    parent_phone: '081166554433',
-    status: 'Aktif',
-  },
-  {
-    id: '5',
-    nisn: '0128912005',
-    full_name: 'Khalid Bin Walid',
-    gender: 'Laki-laki',
-    class_name: 'Kelas 6 (Al-Farisi)',
-    assigned_teacher_name: 'Ustadz Hasan',
-    assigned_teacher_email: 'hasan@sditalihsan.sch.id',
-    parent_name: 'Sulaeman',
-    parent_phone: '081755443322',
-    status: 'Aktif',
-  },
-];
-
 export default function StudentsDirectoryPage() {
-  // Simulator Role (Toggle antara Kepsek dan Guru Wali Kelas)
-  const [currentUserRole, setCurrentUserRole] = useState('Guru'); // 'Kepsek' atau 'Guru'
+  const [currentUserRole, setCurrentUserRole] = useState('Kepsek'); // Default Kepsek View
   const teacherEmail = 'guru@sditalihsan.sch.id'; // Simulasi email Ustadz Abdullah
 
-  const [students, setStudents] = useState(ALL_STUDENTS_DATABASE);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('Semua');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,22 +33,58 @@ export default function StudentsDirectoryPage() {
     nisn: '',
     full_name: '',
     gender: 'Laki-laki',
-    class_name: currentUserRole === 'Guru' ? 'Kelas 4 (Hamzah)' : 'Kelas 1 (Abu Bakar)',
+    class_name: 'Kelas 4 (Hamzah)',
     parent_name: '',
     parent_phone: '',
   });
 
+  // Fetch Live Data dari Supabase
+  const fetchStudentsFromSupabase = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching students:', error);
+      } else if (data) {
+        setStudents(data);
+      }
+    } catch (err) {
+      console.error('Supabase client error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudentsFromSupabase();
+
+    // Setup Supabase Realtime Subscription
+    const channel = supabase
+      .channel('realtime_students_directory')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        fetchStudentsFromSupabase();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Filter Data berdasarkan Role Isolation
   const visibleStudents = students.filter((student) => {
-    // Role Guru Isolation: Hanya bisa lihat murid di kelasnya saja
     if (currentUserRole === 'Guru') {
       if (student.assigned_teacher_email !== teacherEmail) return false;
     }
 
     const matchesSearch =
-      student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.nisn.includes(searchQuery) ||
-      student.parent_name.toLowerCase().includes(searchQuery.toLowerCase());
+      (student.full_name && student.full_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (student.nisn && student.nisn.includes(searchQuery)) ||
+      (student.parent_name && student.parent_name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesClass =
       selectedClassFilter === 'Semua' ? true : student.class_name.includes(selectedClassFilter);
@@ -116,33 +92,38 @@ export default function StudentsDirectoryPage() {
     return matchesSearch && matchesClass;
   });
 
-  const handleCreateStudent = (e) => {
+  const handleCreateStudent = async (e) => {
     e.preventDefault();
     if (!newStudent.full_name || !newStudent.nisn) return;
 
-    const created = {
-      id: String(Date.now()),
+    const payload = {
       ...newStudent,
       assigned_teacher_name: currentUserRole === 'Guru' ? 'Ustadz Abdullah' : 'Kepala Sekolah (Admin)',
       assigned_teacher_email: currentUserRole === 'Guru' ? teacherEmail : 'kepsek@sditalihsan.sch.id',
       status: 'Aktif',
     };
 
-    setStudents((prev) => [created, ...prev]);
-    setIsModalOpen(false);
-    setNewStudent({
-      nisn: '',
-      full_name: '',
-      gender: 'Laki-laki',
-      class_name: 'Kelas 4 (Hamzah)',
-      parent_name: '',
-      parent_phone: '',
-    });
+    const { error } = await supabase.from('students').insert([payload]);
+
+    if (!error) {
+      setIsModalOpen(false);
+      setNewStudent({
+        nisn: '',
+        full_name: '',
+        gender: 'Laki-laki',
+        class_name: 'Kelas 4 (Hamzah)',
+        parent_name: '',
+        parent_phone: '',
+      });
+      fetchStudentsFromSupabase();
+    } else {
+      alert('Gagal menambah siswa: ' + error.message);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Role Switcher Simulator & Info Banner */}
+      {/* Role Switcher Simulator Banner */}
       <div className="bg-emerald-900 text-white p-4 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 border-2 border-amber-400">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-500 rounded-xl text-slate-900">
@@ -154,13 +135,20 @@ export default function StudentsDirectoryPage() {
             </p>
             <p className="text-xs font-bold text-slate-100">
               {currentUserRole === 'Kepsek'
-                ? 'Mode Kepala Sekolah: Mengakses Master Data Seluruh Siswa & Wali Kelas'
+                ? 'Mode Kepala Sekolah: Mengakses Master Data Seluruh 300+ Siswa dari Database Supabase'
                 : 'Mode Guru/Wali Kelas (Ustadz Abdullah): Terisolasi khusus Kelas 4 (Hamzah)'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={fetchStudentsFromSupabase}
+            className="p-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 rounded-xl transition-all mr-2"
+            title="Refresh Data Supabase"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
           <span className="text-[11px] font-black text-slate-200">Ganti Role:</span>
           <button
             onClick={() => setCurrentUserRole('Guru')}
@@ -198,7 +186,7 @@ export default function StudentsDirectoryPage() {
           </h1>
           <p className="text-xs text-slate-700 font-bold mt-1">
             {currentUserRole === 'Kepsek'
-              ? 'Menampilkan rekapitulasi data siswa terintegrasi dari seluruh Wali Kelas SDIT Al Ihsan.'
+              ? 'Terhubung Live Supabase Database: Menampilkan seluruh siswa terdaftar SDIT Al Ihsan.'
               : 'Privasi Terjamin: Anda hanya dapat melihat & mengelola data siswa di kelas yang Anda ampu.'}
           </p>
         </div>
@@ -221,7 +209,7 @@ export default function StudentsDirectoryPage() {
               {currentUserRole === 'Kepsek' ? 'Total Seluruh Siswa Sekolah' : 'Jumlah Murid Binaan Anda'}
             </p>
             <p className="text-2xl font-black text-emerald-950 mt-1">
-              {visibleStudents.length} Siswa
+              {loading ? '...' : `${visibleStudents.length} Siswa`}
             </p>
           </div>
           <div className="p-3 bg-emerald-100 text-emerald-800 rounded-xl">
@@ -233,7 +221,7 @@ export default function StudentsDirectoryPage() {
           <div>
             <p className="text-xs font-extrabold text-slate-700">Siswa Laki-laki</p>
             <p className="text-2xl font-black text-emerald-950 mt-1">
-              {visibleStudents.filter((s) => s.gender === 'Laki-laki').length} Siswa
+              {loading ? '...' : `${visibleStudents.filter((s) => s.gender === 'Laki-laki').length} Siswa`}
             </p>
           </div>
           <div className="p-3 bg-teal-100 text-teal-800 rounded-xl">
@@ -245,7 +233,7 @@ export default function StudentsDirectoryPage() {
           <div>
             <p className="text-xs font-extrabold text-slate-700">Siswa Perempuan</p>
             <p className="text-2xl font-black text-emerald-950 mt-1">
-              {visibleStudents.filter((s) => s.gender === 'Perempuan').length} Siswa
+              {loading ? '...' : `${visibleStudents.filter((s) => s.gender === 'Perempuan').length} Siswa`}
             </p>
           </div>
           <div className="p-3 bg-indigo-100 text-indigo-800 rounded-xl">
@@ -277,7 +265,10 @@ export default function StudentsDirectoryPage() {
             >
               <option value="Semua">Semua Kelas Wali Kelas</option>
               <option value="Kelas 1">Kelas 1 (Ustadzah Rahma)</option>
+              <option value="Kelas 2">Kelas 2 (Ustadz Rizky)</option>
+              <option value="Kelas 3">Kelas 3 (Ustadz Farhan)</option>
               <option value="Kelas 4">Kelas 4 (Ustadz Abdullah)</option>
+              <option value="Kelas 5">Kelas 5 (Ustadzah Khadijah)</option>
               <option value="Kelas 6">Kelas 6 (Ustadz Hasan)</option>
             </select>
           </div>
@@ -306,7 +297,16 @@ export default function StudentsDirectoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
-              {visibleStudents.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={currentUserRole === 'Kepsek' ? 8 : 7} className="p-12 text-center text-emerald-800 font-black">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                      <span>Memuat Data 300+ Siswa dari Database Supabase...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : visibleStudents.length > 0 ? (
                 visibleStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-emerald-50/60 transition-colors">
                     <td className="p-3.5 text-emerald-900 font-black">{student.nisn}</td>
@@ -334,7 +334,7 @@ export default function StudentsDirectoryPage() {
               ) : (
                 <tr>
                   <td colSpan={currentUserRole === 'Kepsek' ? 8 : 7} className="p-8 text-center text-slate-500 font-bold">
-                    Tidak ada siswa ditemukan untuk filter peran ini.
+                    Tidak ada siswa ditemukan di database Supabase.
                   </td>
                 </tr>
               )}
@@ -364,7 +364,7 @@ export default function StudentsDirectoryPage() {
                   type="text"
                   value={newStudent.nisn}
                   onChange={(e) => setNewStudent({ ...newStudent, nisn: e.target.value })}
-                  placeholder="Contoh: 0128912006"
+                  placeholder="Contoh: 0128912301"
                   className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                   required
                 />

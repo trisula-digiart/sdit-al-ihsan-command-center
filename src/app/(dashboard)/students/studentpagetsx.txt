@@ -10,16 +10,20 @@ import {
   Phone,
   Filter,
   X,
-  FileSpreadsheet,
+  ShieldCheck,
+  Lock,
+  User,
 } from 'lucide-react';
 
-const INITIAL_STUDENTS = [
+const ALL_STUDENTS_DATABASE = [
   {
     id: '1',
     nisn: '0128912001',
     full_name: 'Muhammad Zaid Al-Faris',
     gender: 'Laki-laki',
-    class_name: 'Kelas 1 (Abu Bakar)',
+    class_name: 'Kelas 4 (Hamzah)',
+    assigned_teacher_name: 'Ustadz Abdullah',
+    assigned_teacher_email: 'guru@sditalihsan.sch.id',
     parent_name: 'Ahmad Fauzi',
     parent_phone: '081299887766',
     status: 'Aktif',
@@ -29,7 +33,9 @@ const INITIAL_STUDENTS = [
     nisn: '0128912002',
     full_name: 'Aisyah Humaira',
     gender: 'Perempuan',
-    class_name: 'Kelas 1 (Abu Bakar)',
+    class_name: 'Kelas 4 (Hamzah)',
+    assigned_teacher_name: 'Ustadz Abdullah',
+    assigned_teacher_email: 'guru@sditalihsan.sch.id',
     parent_name: 'Dedi Kurniawan',
     parent_phone: '081388776655',
     status: 'Aktif',
@@ -40,6 +46,8 @@ const INITIAL_STUDENTS = [
     full_name: 'Fatimah Az-Zahra',
     gender: 'Perempuan',
     class_name: 'Kelas 4 (Hamzah)',
+    assigned_teacher_name: 'Ustadz Abdullah',
+    assigned_teacher_email: 'guru@sditalihsan.sch.id',
     parent_name: 'H. Abdullah',
     parent_phone: '081577665544',
     status: 'Aktif',
@@ -49,7 +57,9 @@ const INITIAL_STUDENTS = [
     nisn: '0128912004',
     full_name: 'Umar Abdul Aziz',
     gender: 'Laki-laki',
-    class_name: 'Kelas 4 (Hamzah)',
+    class_name: 'Kelas 1 (Abu Bakar)',
+    assigned_teacher_name: 'Ustadzah Rahma',
+    assigned_teacher_email: 'rahma@sditalihsan.sch.id',
     parent_name: 'Budi Santoso',
     parent_phone: '081166554433',
     status: 'Aktif',
@@ -60,6 +70,8 @@ const INITIAL_STUDENTS = [
     full_name: 'Khalid Bin Walid',
     gender: 'Laki-laki',
     class_name: 'Kelas 6 (Al-Farisi)',
+    assigned_teacher_name: 'Ustadz Hasan',
+    assigned_teacher_email: 'hasan@sditalihsan.sch.id',
     parent_name: 'Sulaeman',
     parent_phone: '081755443322',
     status: 'Aktif',
@@ -67,9 +79,13 @@ const INITIAL_STUDENTS = [
 ];
 
 export default function StudentsDirectoryPage() {
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
+  // Simulator Role (Toggle antara Kepsek dan Guru Wali Kelas)
+  const [currentUserRole, setCurrentUserRole] = useState('Guru'); // 'Kepsek' atau 'Guru'
+  const teacherEmail = 'guru@sditalihsan.sch.id'; // Simulasi email Ustadz Abdullah
+
+  const [students, setStudents] = useState(ALL_STUDENTS_DATABASE);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClass, setSelectedClass] = useState('Semua');
+  const [selectedClassFilter, setSelectedClassFilter] = useState('Semua');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // New Student Form
@@ -77,9 +93,27 @@ export default function StudentsDirectoryPage() {
     nisn: '',
     full_name: '',
     gender: 'Laki-laki',
-    class_name: 'Kelas 1 (Abu Bakar)',
+    class_name: currentUserRole === 'Guru' ? 'Kelas 4 (Hamzah)' : 'Kelas 1 (Abu Bakar)',
     parent_name: '',
     parent_phone: '',
+  });
+
+  // Filter Data berdasarkan Role Isolation
+  const visibleStudents = students.filter((student) => {
+    // Role Guru Isolation: Hanya bisa lihat murid di kelasnya saja
+    if (currentUserRole === 'Guru') {
+      if (student.assigned_teacher_email !== teacherEmail) return false;
+    }
+
+    const matchesSearch =
+      student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.nisn.includes(searchQuery) ||
+      student.parent_name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesClass =
+      selectedClassFilter === 'Semua' ? true : student.class_name.includes(selectedClassFilter);
+
+    return matchesSearch && matchesClass;
   });
 
   const handleCreateStudent = (e) => {
@@ -89,6 +123,8 @@ export default function StudentsDirectoryPage() {
     const created = {
       id: String(Date.now()),
       ...newStudent,
+      assigned_teacher_name: currentUserRole === 'Guru' ? 'Ustadz Abdullah' : 'Kepala Sekolah (Admin)',
+      assigned_teacher_email: currentUserRole === 'Guru' ? teacherEmail : 'kepsek@sditalihsan.sch.id',
       status: 'Aktif',
     };
 
@@ -98,69 +134,119 @@ export default function StudentsDirectoryPage() {
       nisn: '',
       full_name: '',
       gender: 'Laki-laki',
-      class_name: 'Kelas 1 (Abu Bakar)',
+      class_name: 'Kelas 4 (Hamzah)',
       parent_name: '',
       parent_phone: '',
     });
   };
 
-  const filteredStudents = students.filter((s) => {
-    const matchesSearch =
-      s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.nisn.includes(searchQuery) ||
-      s.parent_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesClass = selectedClass === 'Semua' ? true : s.class_name.includes(selectedClass);
-    return matchesSearch && matchesClass;
-  });
-
   return (
     <div className="space-y-6">
-      {/* Top Bar Header */}
+      {/* Role Switcher Simulator & Info Banner */}
+      <div className="bg-emerald-900 text-white p-4 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 border-2 border-amber-400">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-amber-500 rounded-xl text-slate-900">
+            <ShieldCheck className="w-5 h-5 font-black" />
+          </div>
+          <div>
+            <p className="text-xs font-black tracking-wide text-amber-300 uppercase">
+              Simulasi Mode Role Access Control (RBAC)
+            </p>
+            <p className="text-xs font-bold text-slate-100">
+              {currentUserRole === 'Kepsek'
+                ? 'Mode Kepala Sekolah: Mengakses Master Data Seluruh Siswa & Wali Kelas'
+                : 'Mode Guru/Wali Kelas (Ustadz Abdullah): Terisolasi khusus Kelas 4 (Hamzah)'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-black text-slate-200">Ganti Role:</span>
+          <button
+            onClick={() => setCurrentUserRole('Guru')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+              currentUserRole === 'Guru'
+                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                : 'bg-emerald-800 text-emerald-200 hover:bg-emerald-700'
+            }`}
+          >
+            Guru / Wali Kelas
+          </button>
+          <button
+            onClick={() => setCurrentUserRole('Kepsek')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+              currentUserRole === 'Kepsek'
+                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                : 'bg-emerald-800 text-emerald-200 hover:bg-emerald-700'
+            }`}
+          >
+            Kepala Sekolah
+          </button>
+        </div>
+      </div>
+
+      {/* Top Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm">
         <div>
           <h1 className="text-xl font-black text-emerald-950 flex items-center gap-2">
             <GraduationCap className="w-6 h-6 text-emerald-700" />
-            <span>Direktori & Master Data Siswa</span>
+            <span>
+              {currentUserRole === 'Kepsek'
+                ? 'Master Data Seluruh Siswa (Kepsek View)'
+                : 'Data Siswa Binaan Kelas 4 (Ustadz Abdullah)'}
+            </span>
           </h1>
           <p className="text-xs text-slate-700 font-bold mt-1">
-            Database terintegrasi seluruh siswa SDIT Al Ihsan untuk Kepala Sekolah, Wali Kelas & Staf.
+            {currentUserRole === 'Kepsek'
+              ? 'Menampilkan rekapitulasi data siswa terintegrasi dari seluruh Wali Kelas SDIT Al Ihsan.'
+              : 'Privasi Terjamin: Anda hanya dapat melihat & mengelola data siswa di kelas yang Anda ampu.'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div>
           <button
             onClick={() => setIsModalOpen(true)}
             className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Tambah Siswa Baru</span>
+            <span>Tambah Siswa Binaan</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Highlights Siswa */}
+      {/* KPI Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-extrabold text-slate-700">Total Siswa Aktif</p>
-            <p className="text-2xl font-black text-emerald-950 mt-1">540 Siswa</p>
+            <p className="text-xs font-extrabold text-slate-700">
+              {currentUserRole === 'Kepsek' ? 'Total Seluruh Siswa Sekolah' : 'Jumlah Murid Binaan Anda'}
+            </p>
+            <p className="text-2xl font-black text-emerald-950 mt-1">
+              {visibleStudents.length} Siswa
+            </p>
           </div>
           <div className="p-3 bg-emerald-100 text-emerald-800 rounded-xl">
             <Users className="w-6 h-6" />
           </div>
         </div>
+
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-slate-700">Siswa Laki-laki</p>
-            <p className="text-2xl font-black text-emerald-950 mt-1">280 Siswa</p>
+            <p className="text-2xl font-black text-emerald-950 mt-1">
+              {visibleStudents.filter((s) => s.gender === 'Laki-laki').length} Siswa
+            </p>
           </div>
           <div className="p-3 bg-teal-100 text-teal-800 rounded-xl">
             <UserCheck className="w-6 h-6" />
           </div>
         </div>
+
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-slate-700">Siswa Perempuan</p>
-            <p className="text-2xl font-black text-emerald-950 mt-1">260 Siswa</p>
+            <p className="text-2xl font-black text-emerald-950 mt-1">
+              {visibleStudents.filter((s) => s.gender === 'Perempuan').length} Siswa
+            </p>
           </div>
           <div className="p-3 bg-indigo-100 text-indigo-800 rounded-xl">
             <UserCheck className="w-6 h-6" />
@@ -168,60 +254,71 @@ export default function StudentsDirectoryPage() {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Search and Filter */}
       <div className="bg-white p-4 rounded-2xl border-2 border-emerald-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3 font-bold" />
           <input
             type="text"
-            placeholder="Cari berdasarkan nama, NISN, atau wali murid..."
+            placeholder="Cari nama siswa, NISN, atau orang tua..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border-2 border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-bold placeholder-slate-500"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-emerald-700 shrink-0" />
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="p-2 bg-slate-50 border-2 border-emerald-200 text-xs font-extrabold text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600"
-          >
-            <option value="Semua">Semua Jenjang Kelas</option>
-            <option value="Kelas 1">Kelas 1</option>
-            <option value="Kelas 2">Kelas 2</option>
-            <option value="Kelas 3">Kelas 3</option>
-            <option value="Kelas 4">Kelas 4</option>
-            <option value="Kelas 5">Kelas 5</option>
-            <option value="Kelas 6">Kelas 6</option>
-          </select>
-        </div>
+        {currentUserRole === 'Kepsek' ? (
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-emerald-700 shrink-0" />
+            <select
+              value={selectedClassFilter}
+              onChange={(e) => setSelectedClassFilter(e.target.value)}
+              className="p-2 bg-slate-50 border-2 border-emerald-200 text-xs font-extrabold text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            >
+              <option value="Semua">Semua Kelas Wali Kelas</option>
+              <option value="Kelas 1">Kelas 1 (Ustadzah Rahma)</option>
+              <option value="Kelas 4">Kelas 4 (Ustadz Abdullah)</option>
+              <option value="Kelas 6">Kelas 6 (Ustadz Hasan)</option>
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-xl text-amber-900 font-black text-xs">
+            <Lock className="w-3.5 h-3.5 text-amber-700" />
+            <span>Filter Terunci: Kelas 4 (Hamzah)</span>
+          </div>
+        )}
       </div>
 
-      {/* Student Data Table */}
+      {/* Table Section */}
       <div className="bg-white border-2 border-emerald-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-emerald-100/80 border-b-2 border-emerald-200 text-emerald-950 font-black">
                 <th className="p-3.5">NISN</th>
-                <th className="p-3.5">Nama Lengkap Siswa</th>
+                <th className="p-3.5">Nama Siswa</th>
                 <th className="p-3.5">Gender</th>
                 <th className="p-3.5">Rombel Kelas</th>
-                <th className="p-3.5">Nama Orang Tua / Wali</th>
-                <th className="p-3.5">No. Telepon / WhatsApp</th>
+                {currentUserRole === 'Kepsek' && <th className="p-3.5">Wali Kelas Penanggung Jawab</th>}
+                <th className="p-3.5">Orang Tua / Wali</th>
+                <th className="p-3.5">No. WhatsApp</th>
                 <th className="p-3.5 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
+              {visibleStudents.length > 0 ? (
+                visibleStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-emerald-50/60 transition-colors">
                     <td className="p-3.5 text-emerald-900 font-black">{student.nisn}</td>
                     <td className="p-3.5 font-black text-slate-900">{student.full_name}</td>
                     <td className="p-3.5 text-slate-700">{student.gender}</td>
                     <td className="p-3.5 text-emerald-800 font-extrabold">{student.class_name}</td>
+                    {currentUserRole === 'Kepsek' && (
+                      <td className="p-3.5 text-indigo-900 font-black flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>{student.assigned_teacher_name}</span>
+                      </td>
+                    )}
                     <td className="p-3.5 text-slate-700">{student.parent_name}</td>
                     <td className="p-3.5 text-slate-700 flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-emerald-600" />
@@ -236,8 +333,8 @@ export default function StudentsDirectoryPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-slate-500 font-bold">
-                    Tidak ada data siswa yang cocok dengan kriteria pencarian.
+                  <td colSpan={currentUserRole === 'Kepsek' ? 8 : 7} className="p-8 text-center text-slate-500 font-bold">
+                    Tidak ada siswa ditemukan untuk filter peran ini.
                   </td>
                 </tr>
               )}
@@ -246,14 +343,14 @@ export default function StudentsDirectoryPage() {
         </div>
       </div>
 
-      {/* Modal Modal Tambah Siswa */}
+      {/* Modal Tambah Siswa */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
             <div className="p-4 bg-emerald-700 text-white flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
                 <GraduationCap className="w-4 h-4" />
-                <span>Tambah Siswa Baru SDIT Al Ihsan</span>
+                <span>Tambah Siswa Binaan Baru</span>
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-white hover:text-amber-200">
                 <X className="w-5 h-5" />
@@ -300,18 +397,13 @@ export default function StudentsDirectoryPage() {
 
                 <div>
                   <label className="block text-xs font-black text-slate-900 mb-1">Kelas Rombel</label>
-                  <select
+                  <input
+                    type="text"
                     value={newStudent.class_name}
+                    disabled={currentUserRole === 'Guru'}
                     onChange={(e) => setNewStudent({ ...newStudent, class_name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                  >
-                    <option value="Kelas 1 (Abu Bakar)">Kelas 1 (Abu Bakar)</option>
-                    <option value="Kelas 2 (Ali)">Kelas 2 (Ali)</option>
-                    <option value="Kelas 3 (Thoriq)">Kelas 3 (Thoriq)</option>
-                    <option value="Kelas 4 (Hamzah)">Kelas 4 (Hamzah)</option>
-                    <option value="Kelas 5 (Mu'adz)">Kelas 5 (Mu'adz)</option>
-                    <option value="Kelas 6 (Al-Farisi)">Kelas 6 (Al-Farisi)</option>
-                  </select>
+                    className="w-full p-2.5 bg-slate-100 border-2 border-emerald-200 rounded-xl text-xs font-bold text-slate-900"
+                  />
                 </div>
               </div>
 
@@ -343,13 +435,13 @@ export default function StudentsDirectoryPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl"
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-xl"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md"
+                  className="px-4 py-2 bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md"
                 >
                   Simpan Siswa
                 </button>

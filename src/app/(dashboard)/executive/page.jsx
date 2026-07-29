@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import KPICard from '@/components/shared/KPICard';
 import {
   Users,
@@ -11,78 +12,91 @@ import {
   AlertCircle,
   CheckCircle2,
   Calendar,
-  UserCheck,
   ShieldCheck,
+  ChevronRight,
+  X,
+  CreditCard,
+  UserCheck,
 } from 'lucide-react';
 
-const SUMMARY_METRICS = [
-  {
-    title: 'Total Siswa Terdaftar',
-    value: '540 Siswa',
-    subtext: 'Terbagi di 18 Paralel Kelas',
-    change: '100% Terverifikasi',
-    isPositive: true,
-    icon: GraduationCap,
-    iconBg: 'bg-emerald-100 text-emerald-800',
-  },
-  {
-    title: 'Kehadiran Guru & Wali Kelas',
-    value: '98.0%',
-    subtext: '48 / 49 Pendidik Hadir',
-    change: 'Presensi Lengkap',
-    isPositive: true,
-    icon: Users,
-    iconBg: 'bg-teal-100 text-teal-800',
-  },
-  {
-    title: 'Capaian SPP Bulan Ini',
-    value: '88.5%',
-    subtext: 'Rp 142.500.000 Terkumpul',
-    change: '+4.5% target bulanan',
-    isPositive: true,
-    icon: Wallet,
-    iconBg: 'bg-amber-100 text-amber-800',
-  },
-  {
-    title: 'Laporan Sarpras Aktif',
-    value: '4 Isu',
-    subtext: '2 Dalam Penanganan',
-    change: '-2 isu terselesaikan',
-    isPositive: true,
-    icon: Building,
-    iconBg: 'bg-rose-100 text-rose-800',
-  },
+const TEACHERS_LIST_DETAIL = [
+  { id: 1, name: 'Ustadz Abdullah', class: 'Kelas 4 (Hamzah)', status: 'Hadir', time: '06:45 WIB' },
+  { id: 2, name: 'Ustadzah Rahma', class: 'Kelas 1 (Abu Bakar)', status: 'Hadir', time: '06:50 WIB' },
+  { id: 3, name: 'Ustadz Hasan', class: 'Kelas 6 (Al-Farisi)', status: 'Hadir', time: '07:00 WIB' },
+  { id: 4, name: 'Ustadz Rizky', class: 'Kelas 2 (Ali)', status: 'Hadir', time: '07:05 WIB' },
+  { id: 5, name: 'Ustadz Farhan', class: 'Kelas 3 (Thoriq)', status: 'Hadir', time: '07:10 WIB' },
+  { id: 6, name: 'Ustadzah Khadijah', class: 'Kelas 5 (Mu\'adz)', status: 'Izin Dinas', time: '08:00 WIB' },
 ];
 
-const TEACHERS_MONITORING = [
-  { name: 'Ustadz Abdullah', class: 'Kelas 4 (Hamzah)', students: 30, attendance: '100%', status: 'Selesai Input' },
-  { name: 'Ustadzah Rahma', class: 'Kelas 1 (Abu Bakar)', students: 30, attendance: '96.6%', status: 'Selesai Input' },
-  { name: 'Ustadz Hasan', class: 'Kelas 6 (Al-Farisi)', students: 30, attendance: '93.3%', status: 'Selesai Input' },
-  { name: 'Ustadz Rizky', class: 'Kelas 2 (Ali)', students: 30, attendance: '96.6%', status: 'Proses Input' },
-];
-
-const RECENT_ACTIVITIES = [
-  {
-    time: '07:30 WIB',
-    title: 'Input Presensi Kelas 4 (Hamzah) Selesai',
-    desc: 'Ustadz Abdullah menyelesaikan presensi 30 murid binaannya.',
-    type: 'success',
-  },
-  {
-    time: '08:45 WIB',
-    title: 'Laporan Kerusakan AC Ditambahkan',
-    desc: 'Staf Sarpras menjadwalkan perbaikan untuk AC Ruang Kelas 3A.',
-    type: 'warning',
-  },
-  {
-    time: '10:15 WIB',
-    title: 'Pengajuan Dokumen Surat Tugas Guru',
-    desc: 'Dokumen pelatihan Kurikulum Merdeka membutuhkan tanda tangan Digital Kepala Sekolah.',
-    type: 'info',
-  },
+const SPP_SUMMARY_DETAIL = [
+  { grade: 'Kelas 1', target: 'Rp 25.000.000', collected: 'Rp 23.500.000', pct: '94%' },
+  { grade: 'Kelas 2', target: 'Rp 25.000.000', collected: 'Rp 22.000.000', pct: '88%' },
+  { grade: 'Kelas 3', target: 'Rp 25.000.000', collected: 'Rp 21.500.000', pct: '86%' },
+  { grade: 'Kelas 4', target: 'Rp 25.000.000', collected: 'Rp 24.000.000', pct: '96%' },
+  { grade: 'Kelas 5', target: 'Rp 25.000.000', collected: 'Rp 21.000.000', pct: '84%' },
+  { grade: 'Kelas 6', target: 'Rp 25.000.000', collected: 'Rp 22.500.000', pct: '90%' },
 ];
 
 export default function ExecutiveDashboard() {
+  const [totalStudentsCount, setTotalStudentsCount] = useState(300);
+  const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
+  const [isSppModalOpen, setIsSppModalOpen] = useState(false);
+
+  // Fetch count live dari Supabase
+  useEffect(() => {
+    const fetchTotalStudents = async () => {
+      const { count, error } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true });
+
+      if (!error && count !== null) {
+        setTotalStudentsCount(count);
+      }
+    };
+    fetchTotalStudents();
+  }, []);
+
+  const SUMMARY_METRICS = [
+    {
+      title: 'Total Siswa Terdaftar',
+      value: `${totalStudentsCount} Siswa`,
+      subtext: 'Terbagi di 6 Paralel Kelas Utama',
+      change: '100% Terverifikasi Supabase',
+      isPositive: true,
+      icon: GraduationCap,
+      iconBg: 'bg-emerald-100 text-emerald-800',
+    },
+    {
+      title: 'Kehadiran Guru & Wali Kelas',
+      value: '98.0%',
+      subtext: '48 / 49 Pendidik Hadir (Klik Rincian)',
+      change: 'Presensi Lengkap',
+      isPositive: true,
+      icon: Users,
+      iconBg: 'bg-teal-100 text-teal-800',
+      onClick: () => setIsTeachersModalOpen(true),
+    },
+    {
+      title: 'Capaian SPP Bulan Ini',
+      value: '88.5%',
+      subtext: 'Rp 142.500.000 (Klik Rincian)',
+      change: '+4.5% target bulanan',
+      isPositive: true,
+      icon: Wallet,
+      iconBg: 'bg-amber-100 text-amber-800',
+      onClick: () => setIsSppModalOpen(true),
+    },
+    {
+      title: 'Laporan Sarpras Aktif',
+      value: '4 Isu',
+      subtext: '2 Dalam Penanganan',
+      change: '-2 isu terselesaikan',
+      isPositive: true,
+      icon: Building,
+      iconBg: 'bg-rose-100 text-rose-800',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Title Section */}
@@ -93,7 +107,7 @@ export default function ExecutiveDashboard() {
             <span>Executive Command Dashboard (Kepala Sekolah)</span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
-            Pusat monitoring agregat operasional, presensi wali kelas, dan data seluruh siswa SDIT Al Ihsan.
+            Pusat monitoring agregat operasional, presensi wali kelas, dan data seluruh {totalStudentsCount} siswa SDIT Al Ihsan.
           </p>
         </div>
         <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-black text-emerald-900">
@@ -102,10 +116,18 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* Metric Cards Grid */}
+      {/* Metric Cards Grid Interaktif */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {SUMMARY_METRICS.map((metric, idx) => (
-          <KPICard key={idx} {...metric} />
+          <div
+            key={idx}
+            onClick={metric.onClick}
+            className={`${
+              metric.onClick ? 'cursor-pointer hover:scale-[1.02] transition-all' : ''
+            }`}
+          >
+            <KPICard {...metric} />
+          </div>
         ))}
       </div>
 
@@ -123,7 +145,7 @@ export default function ExecutiveDashboard() {
               </p>
             </div>
             <span className="text-xs font-black text-emerald-900 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full">
-              4/4 Kelas Terdata
+              6/6 Kelas Terdata
             </span>
           </div>
 
@@ -139,19 +161,39 @@ export default function ExecutiveDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-100">
-                {TEACHERS_MONITORING.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-emerald-50/50">
-                    <td className="p-2.5 font-black text-slate-900">{item.name}</td>
-                    <td className="p-2.5 text-emerald-800 font-black">{item.class}</td>
-                    <td className="p-2.5 text-slate-700">{item.students} Murid</td>
-                    <td className="p-2.5 text-emerald-900 font-black">{item.attendance}</td>
-                    <td className="p-2.5 text-center">
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                <tr className="hover:bg-emerald-50/50">
+                  <td className="p-2.5 font-black text-slate-900">Ustadz Abdullah</td>
+                  <td className="p-2.5 text-emerald-800 font-black">Kelas 4 (Hamzah)</td>
+                  <td className="p-2.5 text-slate-700">50 Murid</td>
+                  <td className="p-2.5 text-emerald-900 font-black">100%</td>
+                  <td className="p-2.5 text-center">
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
+                      Selesai Input
+                    </span>
+                  </td>
+                </tr>
+                <tr className="hover:bg-emerald-50/50">
+                  <td className="p-2.5 font-black text-slate-900">Ustadzah Rahma</td>
+                  <td className="p-2.5 text-emerald-800 font-black">Kelas 1 (Abu Bakar)</td>
+                  <td className="p-2.5 text-slate-700">50 Murid</td>
+                  <td className="p-2.5 text-emerald-900 font-black">98.0%</td>
+                  <td className="p-2.5 text-center">
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
+                      Selesai Input
+                    </span>
+                  </td>
+                </tr>
+                <tr className="hover:bg-emerald-50/50">
+                  <td className="p-2.5 font-black text-slate-900">Ustadz Hasan</td>
+                  <td className="p-2.5 text-emerald-800 font-black">Kelas 6 (Al-Farisi)</td>
+                  <td className="p-2.5 text-slate-700">50 Murid</td>
+                  <td className="p-2.5 text-emerald-900 font-black">96.0%</td>
+                  <td className="p-2.5 text-center">
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
+                      Selesai Input
+                    </span>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -169,39 +211,131 @@ export default function ExecutiveDashboard() {
           </div>
 
           <div className="space-y-4 pt-1">
-            {RECENT_ACTIVITIES.map((act, idx) => (
-              <div key={idx} className="flex items-start gap-3 text-xs">
-                <div
-                  className={`p-1.5 rounded-lg mt-0.5 ${
-                    act.type === 'success'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : act.type === 'warning'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-teal-100 text-teal-800'
-                  }`}
-                >
-                  {act.type === 'success' ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : act.type === 'warning' ? (
-                    <AlertCircle className="w-4 h-4" />
-                  ) : (
-                    <TrendingUp className="w-4 h-4" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-0.5">
-                  <div className="flex justify-between items-center">
-                    <p className="font-black text-slate-900">{act.title}</p>
-                    <span className="text-[10px] font-mono text-slate-500 font-bold">
-                      {act.time}
-                    </span>
-                  </div>
-                  <p className="text-slate-600 font-bold leading-relaxed">{act.desc}</p>
-                </div>
+            <div className="flex items-start gap-3 text-xs">
+              <div className="p-1.5 rounded-lg mt-0.5 bg-emerald-100 text-emerald-800">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
-            ))}
+              <div className="flex-1 space-y-0.5">
+                <div className="flex justify-between items-center">
+                  <p className="font-black text-slate-900">Input Presensi Kelas 4 Selesai</p>
+                  <span className="text-[10px] font-mono text-slate-500 font-bold">07:30 WIB</span>
+                </div>
+                <p className="text-slate-600 font-bold leading-relaxed">
+                  Ustadz Abdullah menyelesaikan presensi 50 murid binaannya.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* MODAL POPUP DETAIL: PRESENSI GURU */}
+      {isTeachersModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
+            <div className="p-4 bg-teal-800 text-white flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-amber-300" />
+                <span>Rincian Kehadiran Guru & Wali Kelas Pagi Ini</span>
+              </h3>
+              <button onClick={() => setIsTeachersModalOpen(false)} className="text-white hover:text-amber-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between bg-teal-50 p-3 rounded-xl border border-teal-200">
+                <p className="text-xs font-black text-teal-950">Total Pendidik: 49 Guru</p>
+                <p className="text-xs font-black text-emerald-800">48 Hadir | 1 Izin Dinas</p>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full text-left text-xs font-bold">
+                  <thead>
+                    <tr className="bg-emerald-100/80 text-emerald-950 border-b border-emerald-200">
+                      <th className="p-2.5">Nama Guru</th>
+                      <th className="p-2.5">Kelas / Jabatan</th>
+                      <th className="p-2.5">Jam Absen</th>
+                      <th className="p-2.5 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100">
+                    {TEACHERS_LIST_DETAIL.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-black text-slate-900">{item.name}</td>
+                        <td className="p-2.5 text-emerald-800 font-bold">{item.class}</td>
+                        <td className="p-2.5 text-slate-600 font-mono">{item.time}</td>
+                        <td className="p-2.5 text-center">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                              item.status === 'Hadir'
+                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                : 'bg-amber-100 text-amber-900 border border-amber-300'
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL POPUP DETAIL: REKAPITULASI SPP */}
+      {isSppModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
+            <div className="p-4 bg-amber-700 text-white flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-amber-200" />
+                <span>Rekapitulasi Capaian SPP per Jenjang Kelas</span>
+              </h3>
+              <button onClick={() => setIsSppModalOpen(false)} className="text-white hover:text-amber-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between bg-amber-50 p-3 rounded-xl border border-amber-200">
+                <p className="text-xs font-black text-amber-950">Target Bulanan: Rp 160.000.000</p>
+                <p className="text-xs font-black text-amber-900">Terkumpul: Rp 142.500.000 (88.5%)</p>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full text-left text-xs font-bold">
+                  <thead>
+                    <tr className="bg-amber-100/80 text-amber-950 border-b border-amber-200">
+                      <th className="p-2.5">Jenjang Kelas</th>
+                      <th className="p-2.5">Target SPP</th>
+                      <th className="p-2.5">Terkumpul</th>
+                      <th className="p-2.5 text-center">Persentase</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100">
+                    {SPP_SUMMARY_DETAIL.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-black text-slate-900">{item.grade}</td>
+                        <td className="p-2.5 text-slate-600">{item.target}</td>
+                        <td className="p-2.5 text-emerald-800 font-black">{item.collected}</td>
+                        <td className="p-2.5 text-center">
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
+                            {item.pct}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
