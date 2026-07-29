@@ -22,22 +22,29 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
-  // Function Download Template CSV
+  // Function Download Template CSV (Rapi per-kolom di Excel Indonesia & Global via UTF-8 BOM)
   const handleDownloadTemplate = () => {
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      'nisn,full_name,gender,class_name,parent_name,whatsapp_no\n' +
-      '0128912001,Ahmad Fadhil,Laki-laki,Kelas 1 (Abu Bakar),Bpk Supardi,081280000001\n' +
-      '0128912002,Siti Maryam,Perempuan,Kelas 2 (Ali),Bpk Ruslan,081280000002\n' +
-      '0128912003,Muhammad Omar,Laki-laki,Kelas 4 (Hamzah),Bpk Hendra,081280000003';
+    // Header sep: menginstruksikan Excel secara otomatis menggunakan koma sebagai delimiter
+    const csvRows = [
+      'sep=,',
+      'nisn,full_name,gender,class_name,parent_name,whatsapp_no',
+      '0128912001,Ahmad Fadhil,Laki-laki,Kelas 1 (Abu Bakar),Bpk Supardi,081280000001',
+      '0128912002,Siti Maryam,Perempuan,Kelas 2 (Ali),Bpk Ruslan,081280000002',
+      '0128912003,Muhammad Omar,Laki-laki,Kelas 4 (Hamzah),Bpk Hendra,081280000003',
+    ];
 
-    const encodedUri = encodeURI(csvContent);
+    // Menggunakan UTF-8 BOM (\uFEFF) agar MS Excel langsung memecah data ke kolom A, B, C, D, E, F
+    const csvString = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', 'Template_Import_Siswa_SDIT_Al_Ihsan.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Helper Auto-Assign Wali Kelas berdasarkan Rombel
@@ -53,14 +60,14 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
     return 'Ustadz Abdullah';
   };
 
-  // Parsing File CSV
+  // Dual-Delimiter Parser (Support koma ',' dan titik-koma ';')
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     setErrorMsg('');
     setSuccessMsg('');
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith('.csv')) {
+    if (!selectedFile.name.endsWith('.csv') && !selectedFile.name.endsWith('.txt')) {
       setErrorMsg('Format file harus ber-ekstensi .csv! Silakan unduh template jika ragu.');
       return;
     }
@@ -70,20 +77,34 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
 
     reader.onload = (event) => {
       const text = event.target.result;
-      const lines = text.split(/\r\n|\n/);
+      const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0);
+
       if (lines.length < 2) {
         setErrorMsg('File CSV kosong atau tidak memiliki data baris.');
         return;
       }
 
-      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      // Deteksi jika ada baris "sep=" dari template
+      let startRowIndex = 0;
+      if (lines[0].toLowerCase().startsWith('sep=')) {
+        startRowIndex = 1;
+      }
+
+      const headerLine = lines[startRowIndex];
+      // Deteksi pemisah: koma atau titik koma
+      const delimiter = headerLine.includes(';') ? ';' : ',';
+
+      const headers = headerLine
+        .split(delimiter)
+        .map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase());
+
       const studentList = [];
 
-      for (let i = 1; i < lines.length; i++) {
+      for (let i = startRowIndex + 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
 
-        const values = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+        const values = line.split(delimiter).map((v) => v.trim().replace(/^"|"$/g, ''));
         if (values.length >= 2) {
           const rowData = {};
           headers.forEach((header, index) => {
@@ -105,10 +126,14 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
         }
       }
 
-      setParsedPreview(studentList);
+      if (studentList.length === 0) {
+        setErrorMsg('Tidak dapat membaca data siswa dari file. Pastikan header sesuai template.');
+      } else {
+        setParsedPreview(studentList);
+      }
     };
 
-    reader.readAsText(selectedFile);
+    reader.readAsText(selectedFile, 'UTF-8');
   };
 
   // Batch Ingestion ke Supabase Database
@@ -171,12 +196,13 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
             <div className="space-y-1">
               <p className="font-black text-emerald-950">Gunakan Format Template Resmi SDIT Al Ihsan</p>
               <p className="text-[11px] text-slate-600">
-                Unduh file `.csv` sampel di bawah, isi data di Excel, lalu upload kembali.
+                Unduh file `.csv` sampel di bawah, buka di Excel (akan otomatis terbagi per-kolom A-F), isi data, lalu upload kembali.
               </p>
             </div>
             <button
+              type="button"
               onClick={handleDownloadTemplate}
-              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all shrink-0"
+              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all shrink-0 cursor-pointer"
             >
               <Download className="w-4 h-4 text-amber-300" />
               <span>Unduh Template CSV</span>
@@ -201,7 +227,7 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
               <p className="text-[10px] text-slate-500">
                 {file
                   ? `Ukuran file: ${(file.size / 1024).toFixed(1)} KB`
-                  : 'Mendukung format file CSV (Comma Separated Values)'}
+                  : 'Mendukung format file CSV (Support Komat & Titik Koma Excel)'}
               </p>
             </div>
           </div>
@@ -269,7 +295,7 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl text-xs"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl text-xs cursor-pointer"
             >
               Batal
             </button>
