@@ -122,6 +122,25 @@ export default function Sidebar() {
     fetchSchoolBranding();
   }, []);
 
+  const handleLogout = () => {
+    try {
+      // 1. Hapus Cookie user_session_token (Wajib agar dibaca oleh middleware.js)
+      document.cookie = 'user_session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax';
+
+      // 2. Clear Local & Session Storage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user_session');
+        sessionStorage.clear();
+      }
+
+      // 3. Hard Redirect ke Halaman Login
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+      window.location.href = '/login';
+    }
+  };
+
   const filteredNavItems = NAVIGATION_ITEMS.filter((item) =>
     item.roles.includes(userRole)
   );
@@ -196,18 +215,14 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <Link
-          href="/login"
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('user_session');
-            }
-          }}
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-rose-700 hover:text-rose-900 hover:bg-rose-100/70 transition-all duration-150"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-rose-700 hover:text-rose-900 hover:bg-rose-100/70 transition-all duration-150 cursor-pointer"
         >
           <LogOut className="w-4 h-4 shrink-0 text-rose-600" />
           <span>Keluar Sistem</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
