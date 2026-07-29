@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import {
   FileText,
   Printer,
@@ -8,9 +9,7 @@ import {
   Upload,
   X,
   Plus,
-  Building,
   Edit3,
-  CheckCircle2,
 } from 'lucide-react';
 
 const INITIAL_TEMPLATES = [
@@ -39,13 +38,15 @@ export default function DocumentGeneratorPage() {
   const [selectedTemplate, setSelectedTemplate] = useState('surat_tugas');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Dynamic School Info State (Realtime Sync dari /settings)
+  // Dynamic School Info State (Fetch Realtime dari Supabase school_settings)
   const [schoolInfo, setSchoolInfo] = useState({
     school_name: 'SDIT AL IHSAN INTEGRATED SCHOOL',
     principal_name: 'H. Ahmad Dahlan, M.Pd',
-    address: 'Jl. Education No. 45, Kompleks Islamic Center',
-    phone: '(021) 8892-1029',
+    address: 'Jl. Kebajikan No. 45, Kecamatan Beji, Kota Depok, Jawa Barat',
+    phone: '021-77889900',
     email: 'info@sditalihsan.sch.id',
+    logo_url: '',
+    kop_logo_url: '',
   });
 
   // Dynamic Form State
@@ -60,7 +61,7 @@ export default function DocumentGeneratorPage() {
     tanggalTerbit: '29 Juli 2026',
   });
 
-  // State untuk Dynamic Paragraph Editing pada Live Preview (Poin 5)
+  // State untuk Dynamic Paragraph Editing pada Live Preview
   const [previewParagraph1, setPreviewParagraph1] = useState(
     'Yang bertanda tangan di bawah ini, Kepala Sekolah SDIT Al Ihsan dengan ini memberikan tugas/keterangan resmi kepada:'
   );
@@ -78,21 +79,32 @@ export default function DocumentGeneratorPage() {
     code: 'CUSTOM-SDIT/2026',
   });
 
-  // Load School Info Sync dari Settings (Poin 4)
+  // Load School Settings Realtime dari Database Supabase
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedSchool = localStorage.getItem('school_info');
-      if (storedSchool) {
-        try {
-          const parsed = JSON.parse(storedSchool);
-          if (parsed && parsed.school_name) {
-            setSchoolInfo(parsed);
-          }
-        } catch (e) {
-          console.error(e);
+    const fetchSchoolSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('school_settings')
+          .select('*')
+          .single();
+
+        if (!error && data) {
+          setSchoolInfo({
+            school_name: data.school_name || 'SDIT AL IHSAN INTEGRATED SCHOOL',
+            principal_name: data.principal_name || 'H. Ahmad Dahlan, M.Pd',
+            address: data.address || 'Jl. Kebajikan No. 45, Kecamatan Beji, Kota Depok, Jawa Barat',
+            phone: data.phone || '021-77889900',
+            email: data.email || 'info@sditalihsan.sch.id',
+            logo_url: data.logo_url || '',
+            kop_logo_url: data.kop_logo_url || '',
+          });
         }
+      } catch (err) {
+        console.error('Error fetching school_settings for documents:', err);
       }
-    }
+    };
+
+    fetchSchoolSettings();
   }, []);
 
   const handleInputChange = (e) => {
@@ -164,7 +176,6 @@ export default function DocumentGeneratorPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Tombol Upload Template Baru (Poin 3) */}
           <button
             onClick={() => setIsUploadModalOpen(true)}
             className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
@@ -305,23 +316,34 @@ export default function DocumentGeneratorPage() {
           </div>
         </div>
 
-        {/* Live Editable Document Preview Right Panel (Poin 4 & 5) */}
+        {/* Live Editable Document Preview Right Panel (REALTIME SYNC KOP LOGO SUPABASE) */}
         <div className="lg:col-span-7 w-full flex flex-col items-center bg-slate-100 p-2 md:p-6 rounded-2xl border-2 border-emerald-200 space-y-3">
           <div className="print:hidden w-full bg-emerald-100 border border-emerald-300 p-2.5 rounded-xl text-emerald-950 text-xs font-black flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Edit3 className="w-4 h-4 text-emerald-700" />
               <span>Preview Kertas A4 (Dapat Diketik / Diedit Langsung Teks Paragrafnya)</span>
             </span>
-            <span className="text-[10px] bg-emerald-200 px-2 py-0.5 rounded-md">Live Sync Kop Sekolah</span>
+            <span className="text-[10px] bg-emerald-200 px-2 py-0.5 rounded-md">Live Sync Supabase</span>
           </div>
 
           <div className="print-area bg-white w-full max-w-[210mm] min-h-[297mm] p-8 md:p-12 shadow-xl rounded-sm text-slate-900 border border-slate-200 flex flex-col justify-between">
             <div>
-              {/* Kop Surat Resmi - SYNC DENGAN SETTINGS (Poin 4) */}
+              {/* KOP SURAT RESMI - DYNAMIC DARI SUPABASE DATABASE */}
               <div className="border-b-4 border-double border-emerald-950 pb-4 mb-6 flex items-center justify-between gap-4">
-                <div className="w-16 h-16 bg-emerald-800 rounded-2xl flex items-center justify-center text-amber-300 font-black text-xl shrink-0 shadow-sm">
-                  AI
-                </div>
+                {schoolInfo.kop_logo_url || schoolInfo.logo_url ? (
+                  <div className="w-16 h-16 rounded-xl border border-emerald-200 p-0.5 bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                    <img
+                      src={schoolInfo.kop_logo_url || schoolInfo.logo_url}
+                      alt="Logo Kop"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 bg-emerald-800 rounded-2xl flex items-center justify-center text-amber-300 font-black text-xl shrink-0 shadow-sm">
+                    AI
+                  </div>
+                )}
+
                 <div className="text-center flex-1">
                   <h2 className="text-base md:text-lg font-black tracking-wider text-emerald-950 uppercase">
                     YAYASAN AL IHSAN ISLAMIC CENTER
@@ -346,9 +368,8 @@ export default function DocumentGeneratorPage() {
                 </p>
               </div>
 
-              {/* Isi Surat Body EDITABLE (Poin 5) */}
+              {/* Isi Surat Body EDITABLE */}
               <div className="text-xs leading-relaxed space-y-4 text-slate-900 my-8">
-                {/* Paragraf 1 Editable */}
                 <p
                   contentEditable
                   suppressContentEditableWarning
@@ -373,7 +394,6 @@ export default function DocumentGeneratorPage() {
                   </div>
                 </div>
 
-                {/* Paragraf 2 Editable */}
                 <p
                   contentEditable
                   suppressContentEditableWarning
@@ -390,7 +410,6 @@ export default function DocumentGeneratorPage() {
                   </p>
                 </div>
 
-                {/* Paragraf 3 Editable */}
                 <p
                   contentEditable
                   suppressContentEditableWarning
@@ -402,7 +421,7 @@ export default function DocumentGeneratorPage() {
               </div>
             </div>
 
-            {/* Tanda Tangan Footer - SYNC KEPALA SEKOLAH (Poin 4) */}
+            {/* Tanda Tangan Footer - SYNC DYNAMIC KEPALA SEKOLAH */}
             <div className="pt-12 flex justify-end">
               <div className="text-center w-64 space-y-16 font-bold">
                 <div>
@@ -425,7 +444,7 @@ export default function DocumentGeneratorPage() {
         </div>
       </div>
 
-      {/* MODAL POPUP UPLOAD TEMPLATE DADAKAN (Poin 3) */}
+      {/* MODAL POPUP UPLOAD TEMPLATE DADAKAN */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">

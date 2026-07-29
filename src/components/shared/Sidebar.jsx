@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 import {
   LayoutDashboard,
   Building,
@@ -29,10 +30,10 @@ const NAVIGATION_ITEMS = [
     name: 'Data Seluruh Siswa',
     href: '/students',
     icon: GraduationCap,
-    roles: ['kepsek'], // HANYA KEPSEK
+    roles: ['kepsek'],
   },
   {
-    name: 'Data Absensi Siswa', // RE-LABEL SESUAI PERMINTAAN USER
+    name: 'Data Absensi Siswa',
     href: '/attendance',
     icon: CalendarCheck2,
     roles: ['kepsek', 'guru'],
@@ -71,15 +72,20 @@ const NAVIGATION_ITEMS = [
     name: 'Pengaturan Sekolah',
     href: '/settings',
     icon: Settings,
-    roles: ['kepsek'], // HANYA KEPSEK
+    roles: ['kepsek'],
   },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [userRole, setUserRole] = useState('kepsek');
+  const [schoolSettings, setSchoolSettings] = useState({
+    school_name: 'SDIT AL IHSAN',
+    logo_url: '',
+  });
 
   useEffect(() => {
+    // 1. Load Session Role
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user_session');
       if (stored) {
@@ -93,6 +99,27 @@ export default function Sidebar() {
         }
       }
     }
+
+    // 2. Load School Settings Realtime dari Supabase Database
+    const fetchSchoolBranding = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('school_settings')
+          .select('school_name, logo_url')
+          .single();
+
+        if (!error && data) {
+          setSchoolSettings({
+            school_name: data.school_name || 'SDIT AL IHSAN',
+            logo_url: data.logo_url || '',
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching sidebar branding from Supabase:', err);
+      }
+    };
+
+    fetchSchoolBranding();
   }, []);
 
   const filteredNavItems = NAVIGATION_ITEMS.filter((item) =>
@@ -101,16 +128,27 @@ export default function Sidebar() {
 
   return (
     <aside className="print:hidden hidden lg:flex flex-col w-64 bg-white text-emerald-950 h-screen border-r-2 border-emerald-200 shrink-0 sticky top-0 shadow-md">
-      {/* Header Branding */}
+      {/* Header Branding DYNAMIC DARI SUPABASE */}
       <div className="p-5 border-b-2 border-emerald-100 flex items-center gap-3 bg-gradient-to-r from-emerald-100/70 via-emerald-50 to-white">
-        <div className="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center font-black text-white text-base shadow-md ring-2 ring-emerald-300">
-          AI
-        </div>
+        {schoolSettings.logo_url ? (
+          <div className="w-10 h-10 rounded-xl bg-white border-2 border-emerald-300 flex items-center justify-center shadow-md p-0.5 shrink-0 overflow-hidden">
+            <img
+              src={schoolSettings.logo_url}
+              alt="Logo Sekolah"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center font-black text-white text-base shadow-md ring-2 ring-emerald-300 shrink-0">
+            AI
+          </div>
+        )}
+
         <div className="flex flex-col min-w-0">
-          <h1 className="font-black text-sm text-emerald-950 tracking-wide truncate">
-            SDIT AL IHSAN
+          <h1 className="font-black text-xs text-emerald-950 tracking-wide truncate uppercase">
+            {schoolSettings.school_name}
           </h1>
-          <p className="text-[10px] text-emerald-800 font-extrabold tracking-tight truncate flex items-center gap-1">
+          <p className="text-[10px] text-emerald-800 font-extrabold tracking-tight truncate flex items-center gap-1 mt-0.5">
             <Compass className="w-3 h-3 text-amber-600" />
             <span>Command Center</span>
           </p>
