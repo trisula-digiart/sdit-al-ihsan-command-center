@@ -13,8 +13,6 @@ import {
   LogOut,
   Sparkles,
   Compass,
-  CalendarCheck2,
-  Wallet,
 } from 'lucide-react';
 
 const NAVIGATION_ITEMS = [
@@ -27,16 +25,6 @@ const NAVIGATION_ITEMS = [
     name: 'Data Seluruh Siswa',
     href: '/students',
     icon: GraduationCap,
-  },
-  {
-    name: 'Data Absensi Guru & Siswa',
-    href: '/attendance',
-    icon: CalendarCheck2,
-  },
-  {
-    name: 'Keuangan & SPP',
-    href: '/finance',
-    icon: Wallet,
   },
   {
     name: 'Sarpras & Fasilitas',

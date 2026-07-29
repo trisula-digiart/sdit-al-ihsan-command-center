@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import KPICard from '@/components/shared/KPICard';
+import { useRouter } from 'next/navigation';
 import {
   Users,
   GraduationCap,
@@ -38,6 +39,7 @@ const SPP_SUMMARY_DETAIL = [
 ];
 
 export default function ExecutiveDashboard() {
+  const router = useRouter();
   const [totalStudentsCount, setTotalStudentsCount] = useState(300);
   const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
   const [isSppModalOpen, setIsSppModalOpen] = useState(false);
@@ -65,6 +67,7 @@ export default function ExecutiveDashboard() {
       isPositive: true,
       icon: GraduationCap,
       iconBg: 'bg-emerald-100 text-emerald-800',
+      onClick: () => router.push('/students'),
     },
     {
       title: 'Kehadiran Guru & Wali Kelas',
@@ -94,6 +97,7 @@ export default function ExecutiveDashboard() {
       isPositive: true,
       icon: Building,
       iconBg: 'bg-rose-100 text-rose-800',
+      onClick: () => router.push('/sarpras'),
     },
   ];
 
@@ -231,7 +235,7 @@ export default function ExecutiveDashboard() {
 
       {/* MODAL POPUP DETAIL: PRESENSI GURU */}
       {isTeachersModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
             <div className="p-4 bg-teal-800 text-white flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
@@ -246,7 +250,13 @@ export default function ExecutiveDashboard() {
             <div className="p-5 space-y-4">
               <div className="flex items-center justify-between bg-teal-50 p-3 rounded-xl border border-teal-200">
                 <p className="text-xs font-black text-teal-950">Total Pendidik: 49 Guru</p>
-                <p className="text-xs font-black text-emerald-800">48 Hadir | 1 Izin Dinas</p>
+                <button
+                  onClick={() => router.push('/attendance')}
+                  className="text-xs font-black text-emerald-800 underline flex items-center gap-1"
+                >
+                  <span>Buka Halaman Modul Absensi Lengkap</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
               </div>
 
               <div className="max-h-80 overflow-y-auto">
@@ -288,7 +298,7 @@ export default function ExecutiveDashboard() {
 
       {/* MODAL POPUP DETAIL: REKAPITULASI SPP */}
       {isSppModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
             <div className="p-4 bg-amber-700 text-white flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
@@ -303,7 +313,13 @@ export default function ExecutiveDashboard() {
             <div className="p-5 space-y-4">
               <div className="flex items-center justify-between bg-amber-50 p-3 rounded-xl border border-amber-200">
                 <p className="text-xs font-black text-amber-950">Target Bulanan: Rp 160.000.000</p>
-                <p className="text-xs font-black text-amber-900">Terkumpul: Rp 142.500.000 (88.5%)</p>
+                <button
+                  onClick={() => router.push('/finance')}
+                  className="text-xs font-black text-amber-900 underline flex items-center gap-1"
+                >
+                  <span>Buka Halaman Keuangan SPP Lengkap</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
               </div>
 
               <div className="max-h-80 overflow-y-auto">

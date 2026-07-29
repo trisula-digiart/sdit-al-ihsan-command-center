@@ -9,17 +9,27 @@ import {
   Users,
   UserCheck,
   Phone,
-  Filter,
   X,
   ShieldCheck,
-  Lock,
   User,
   Loader2,
   RefreshCw,
+  Lock,
+  Filter,
 } from 'lucide-react';
 
+const CLASS_TABS = [
+  { id: 'Semua', label: 'Semua Kelas' },
+  { id: 'Kelas 1', label: 'Kelas 1 (Abu Bakar)' },
+  { id: 'Kelas 2', label: 'Kelas 2 (Ali)' },
+  { id: 'Kelas 3', label: 'Kelas 3 (Thoriq)' },
+  { id: 'Kelas 4', label: 'Kelas 4 (Hamzah)' },
+  { id: 'Kelas 5', label: 'Kelas 5 (Mu\'adz)' },
+  { id: 'Kelas 6', label: 'Kelas 6 (Al-Farisi)' },
+];
+
 export default function StudentsDirectoryPage() {
-  const [currentUserRole, setCurrentUserRole] = useState('Kepsek'); // Default Kepsek View
+  const [currentUserRole, setCurrentUserRole] = useState('Guru'); // Simulasi default sesuai screenshot
   const teacherEmail = 'guru@sditalihsan.sch.id'; // Simulasi email Ustadz Abdullah
 
   const [students, setStudents] = useState([]);
@@ -28,7 +38,7 @@ export default function StudentsDirectoryPage() {
   const [selectedClassFilter, setSelectedClassFilter] = useState('Semua');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // New Student Form
+  // New Student Form State
   const [newStudent, setNewStudent] = useState({
     nisn: '',
     full_name: '',
@@ -61,22 +71,11 @@ export default function StudentsDirectoryPage() {
 
   useEffect(() => {
     fetchStudentsFromSupabase();
-
-    // Setup Supabase Realtime Subscription
-    const channel = supabase
-      .channel('realtime_students_directory')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        fetchStudentsFromSupabase();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
-  // Filter Data berdasarkan Role Isolation
+  // Filter Data berdasarkan Role Isolation & Quick Class Tabs
   const visibleStudents = students.filter((student) => {
+    // Role Guru: Terisolasi hanya untuk murid Ustadz Abdullah
     if (currentUserRole === 'Guru') {
       if (student.assigned_teacher_email !== teacherEmail) return false;
     }
@@ -151,7 +150,10 @@ export default function StudentsDirectoryPage() {
           </button>
           <span className="text-[11px] font-black text-slate-200">Ganti Role:</span>
           <button
-            onClick={() => setCurrentUserRole('Guru')}
+            onClick={() => {
+              setCurrentUserRole('Guru');
+              setSelectedClassFilter('Kelas 4');
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
               currentUserRole === 'Guru'
                 ? 'bg-amber-400 text-slate-950 shadow-sm'
@@ -161,7 +163,10 @@ export default function StudentsDirectoryPage() {
             Guru / Wali Kelas
           </button>
           <button
-            onClick={() => setCurrentUserRole('Kepsek')}
+            onClick={() => {
+              setCurrentUserRole('Kepsek');
+              setSelectedClassFilter('Semua');
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
               currentUserRole === 'Kepsek'
                 ? 'bg-amber-400 text-slate-950 shadow-sm'
@@ -206,7 +211,7 @@ export default function StudentsDirectoryPage() {
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-slate-700">
-              {currentUserRole === 'Kepsek' ? 'Total Seluruh Siswa Sekolah' : 'Jumlah Murid Binaan Anda'}
+              {currentUserRole === 'Kepsek' ? 'Total Siswa Tampil' : 'Jumlah Murid Binaan Anda'}
             </p>
             <p className="text-2xl font-black text-emerald-950 mt-1">
               {loading ? '...' : `${visibleStudents.length} Siswa`}
@@ -242,42 +247,49 @@ export default function StudentsDirectoryPage() {
         </div>
       </div>
 
-      {/* Search and Filter */}
-      <div className="bg-white p-4 rounded-2xl border-2 border-emerald-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3 font-bold" />
-          <input
-            type="text"
-            placeholder="Cari nama siswa, NISN, atau orang tua..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border-2 border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-bold placeholder-slate-500"
-          />
-        </div>
+      {/* LOGIKA CONDITIONAL FILTER: Tombol Cepat Pindah Kelas (Kepsek) vs Terlocked (Guru) */}
+      <div className="bg-white p-4 rounded-2xl border-2 border-emerald-200 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3 font-bold" />
+            <input
+              type="text"
+              placeholder="Cari nama siswa, NISN, atau orang tua..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border-2 border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-bold placeholder-slate-500"
+            />
+          </div>
 
-        {currentUserRole === 'Kepsek' ? (
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-emerald-700 shrink-0" />
-            <select
-              value={selectedClassFilter}
-              onChange={(e) => setSelectedClassFilter(e.target.value)}
-              className="p-2 bg-slate-50 border-2 border-emerald-200 text-xs font-extrabold text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600"
-            >
-              <option value="Semua">Semua Kelas Wali Kelas</option>
-              <option value="Kelas 1">Kelas 1 (Ustadzah Rahma)</option>
-              <option value="Kelas 2">Kelas 2 (Ustadz Rizky)</option>
-              <option value="Kelas 3">Kelas 3 (Ustadz Farhan)</option>
-              <option value="Kelas 4">Kelas 4 (Ustadz Abdullah)</option>
-              <option value="Kelas 5">Kelas 5 (Ustadzah Khadijah)</option>
-              <option value="Kelas 6">Kelas 6 (Ustadz Hasan)</option>
-            </select>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-xl text-amber-900 font-black text-xs">
-            <Lock className="w-3.5 h-3.5 text-amber-700" />
-            <span>Filter Terunci: Kelas 4 (Hamzah)</span>
-          </div>
-        )}
+          {currentUserRole === 'Kepsek' ? (
+            /* KEPSEK VIEW: Tombol Cepat Pindah Kelas (Tab Pills Instant) */
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              <Filter className="w-4 h-4 text-emerald-700 shrink-0 mr-1" />
+              {CLASS_TABS.map((tab) => {
+                const isActive = selectedClassFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedClassFilter(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-emerald-700 text-white shadow-md border-2 border-emerald-900'
+                        : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* GURU VIEW: Terkunci ke Kelas 4 (Sesuai Gambar 1) */
+            <div className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-100 border-2 border-amber-300 rounded-xl text-amber-900 font-black text-xs shadow-sm">
+              <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>Filter Terunci: Kelas 4 (Hamzah)</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table Section */}
@@ -302,7 +314,7 @@ export default function StudentsDirectoryPage() {
                   <td colSpan={currentUserRole === 'Kepsek' ? 8 : 7} className="p-12 text-center text-emerald-800 font-black">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                      <span>Memuat Data 300+ Siswa dari Database Supabase...</span>
+                      <span>Memuat Data Siswa dari Supabase...</span>
                     </div>
                   </td>
                 </tr>
@@ -334,7 +346,7 @@ export default function StudentsDirectoryPage() {
               ) : (
                 <tr>
                   <td colSpan={currentUserRole === 'Kepsek' ? 8 : 7} className="p-8 text-center text-slate-500 font-bold">
-                    Tidak ada siswa ditemukan di database Supabase.
+                    Tidak ada siswa ditemukan untuk filter ini.
                   </td>
                 </tr>
               )}
