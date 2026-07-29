@@ -9,11 +9,10 @@ import {
   CreditCard,
   Search,
   Loader2,
-  Users,
 } from 'lucide-react';
 
 const SPP_BY_CLASS = [
-  { class_name: 'Kelas 1 (Abu Bakar)', searchKey: 'Kelas 1', teacher: 'Ustadzah Rahma', target: 25000000, collected: 23500000, pct: 94, total_students: 50, paid_students: 47 },
+  { class_name: 'Kelas 1 (Abu Bakar)', searchKey: 'Kelas 1', teacher: 'Ustadzah Rahma / Umar', target: 25000000, collected: 23500000, pct: 94, total_students: 50, paid_students: 47 },
   { class_name: 'Kelas 2 (Ali)', searchKey: 'Kelas 2', teacher: 'Ustadz Rizky', target: 25000000, collected: 22000000, pct: 88, total_students: 50, paid_students: 44 },
   { class_name: 'Kelas 3 (Thoriq)', searchKey: 'Kelas 3', teacher: 'Ustadz Farhan', target: 25000000, collected: 21500000, pct: 86, total_students: 50, paid_students: 43 },
   { class_name: 'Kelas 4 (Hamzah)', searchKey: 'Kelas 4', teacher: 'Ustadz Abdullah', target: 25000000, collected: 24000000, pct: 96, total_students: 50, paid_students: 48 },
@@ -27,14 +26,15 @@ export default function FinanceSPPPage() {
   const [loadingModal, setLoadingModal] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   
-  // State untuk langsung menampilkan 50 siswa kelas binaan guru
+  // State untuk menampilkan siswa kelas binaan guru
   const [teacherStudents, setTeacherStudents] = useState([]);
   const [loadingTeacherStudents, setLoadingTeacherStudents] = useState(false);
   const [teacherSearchQuery, setTeacherSearchQuery] = useState('');
 
   const [userSession, setUserSession] = useState({
     role: 'kepsek',
-    name: 'H. Ahmad Dahlan, M.Pd',
+    name: 'Pengguna System',
+    class_name: 'Kelas 1 (Abu Bakar)',
   });
 
   useEffect(() => {
@@ -51,24 +51,27 @@ export default function FinanceSPPPage() {
   }, []);
 
   const isTeacher = userSession.role === 'guru';
+  const assignedClassTitle = userSession.class_name || 'Kelas 1 (Abu Bakar)';
 
-  // Fetch 50 siswa SPP langsung dari Supabase untuk tampilan Guru (Kelas 4)
+  // Fetch siswa SPP DYNAMIC dari Supabase sesuai Kelas Binaan Guru
   useEffect(() => {
     if (!isTeacher) return;
 
     const fetchTeacherClassStudents = async () => {
       setLoadingTeacherStudents(true);
       try {
+        const classKeyword = assignedClassTitle.split(' ')[1] || assignedClassTitle;
+
         const { data, error } = await supabase
           .from('students')
           .select('*')
-          .ilike('class_name', '%Kelas 4%')
+          .ilike('class_name', `%${classKeyword}%`)
           .order('full_name', { ascending: true });
 
         if (!error && data) {
           const mappedData = data.map((st, idx) => ({
             ...st,
-            spp_status: idx % 12 === 0 ? 'Belum Lunas' : 'Lunas', // 48 Lunas, 2 Belum Lunas
+            spp_status: idx % 12 === 0 ? 'Belum Lunas' : 'Lunas',
             spp_amount: 500000,
           }));
           setTeacherStudents(mappedData);
@@ -81,10 +84,10 @@ export default function FinanceSPPPage() {
     };
 
     fetchTeacherClassStudents();
-  }, [isTeacher]);
+  }, [isTeacher, assignedClassTitle]);
 
   const filteredSppList = isTeacher
-    ? SPP_BY_CLASS.filter((item) => item.class_name.includes('Kelas 4'))
+    ? SPP_BY_CLASS.filter((item) => item.class_name.toLowerCase().includes(assignedClassTitle.toLowerCase().split(' ')[1] || 'kelas 1'))
     : SPP_BY_CLASS;
 
   const totalCollected = filteredSppList.reduce((acc, curr) => acc + curr.collected, 0);
@@ -146,13 +149,13 @@ export default function FinanceSPPPage() {
             <Wallet className="w-6 h-6 text-emerald-700" />
             <span>
               {isTeacher
-                ? 'Keuangan & SPP Siswa - Kelas 4 (Hamzah)'
+                ? `Keuangan & SPP Siswa - ${assignedClassTitle}`
                 : 'Keuangan & Rekapitulasi SPP Siswa'}
             </span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
             {isTeacher
-              ? 'Monitoring pembayaran SPP bulanan siswa binaan Kelas 4 (Hamzah).'
+              ? `Monitoring pembayaran SPP bulanan siswa binaan ${assignedClassTitle}.`
               : 'Monitoring pembayaran SPP bulanan terintegrasi dari masing-masing Wali Kelas SDIT Al Ihsan.'}
           </p>
         </div>
@@ -186,17 +189,17 @@ export default function FinanceSPPPage() {
         </div>
       </div>
 
-      {/* JIKA GURU -> LANGSUNG TAMPILKAN TABEL 50 SISWA KELAS BINAAN */}
+      {/* JIKA GURU -> DYNAMIC TAMPILKAN SISWA KELAS BINAAN */}
       {isTeacher ? (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-emerald-100 pb-3">
             <div>
               <h2 className="text-sm font-black text-emerald-950 flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-emerald-700" />
-                <span>Rincian Pembayaran SPP 50 Siswa Kelas 4 (Hamzah)</span>
+                <span>Rincian Pembayaran SPP Siswa - {assignedClassTitle}</span>
               </h2>
               <p className="text-xs font-bold text-slate-600 mt-0.5">
-                Wali Kelas: Ustadz Abdullah • Nominal SPP: Rp 500.000 / bulan
+                Wali Kelas: {userSession.name} • Nominal SPP: Rp 500.000 / bulan
               </p>
             </div>
             <div className="relative w-full sm:w-64">
@@ -228,7 +231,7 @@ export default function FinanceSPPPage() {
                     <td colSpan={5} className="p-8 text-center text-emerald-800">
                       <div className="flex items-center justify-center gap-2 font-black">
                         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                        <span>Mengambil Data 50 Siswa dari Database Supabase...</span>
+                        <span>Mengambil Data Siswa {assignedClassTitle} dari Database Supabase...</span>
                       </div>
                     </td>
                   </tr>
@@ -255,7 +258,7 @@ export default function FinanceSPPPage() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
-                      Tidak ada siswa ditemukan dengan kata kunci pencarian tersebut.
+                      Tidak ada siswa ditemukan untuk kelas binaan ini.
                     </td>
                   </tr>
                 )}
@@ -313,7 +316,7 @@ export default function FinanceSPPPage() {
                       </span>
                     </td>
                     <td className="p-3 text-center">
-                      <button className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-black text-[11px] flex items-center gap-1 mx-auto shadow-sm transition-all">
+                      <button className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-black text-[11px] flex items-center gap-1 mx-auto shadow-sm transition-all cursor-pointer">
                         <span>Rincian Siswa ({item.total_students})</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
@@ -337,7 +340,7 @@ export default function FinanceSPPPage() {
               </h3>
               <button
                 onClick={() => setSelectedClassDetail(null)}
-                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors"
+                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -395,7 +398,7 @@ export default function FinanceSPPPage() {
                         <td colSpan={5} className="p-8 text-center text-emerald-800">
                           <div className="flex items-center justify-center gap-2 font-black">
                             <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                            <span>Mengambil Data 50 Siswa dari Database Supabase...</span>
+                            <span>Mengambil Data Siswa dari Database Supabase...</span>
                           </div>
                         </td>
                       </tr>

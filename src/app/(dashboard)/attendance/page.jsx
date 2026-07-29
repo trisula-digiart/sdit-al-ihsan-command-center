@@ -23,7 +23,7 @@ const TEACHER_ATTENDANCE_LOG = [
 ];
 
 const STUDENT_ATTENDANCE_SUMMARY = [
-  { class_name: 'Kelas 1 (Abu Bakar)', searchKey: 'Kelas 1', teacher: 'Ustadzah Rahma', total: 50, hadir: 48, sakit: 1, izin: 1, alfa: 0, pct: 96.0 },
+  { class_name: 'Kelas 1 (Abu Bakar)', searchKey: 'Kelas 1', teacher: 'Ustadzah Rahma / Umar', total: 50, hadir: 48, sakit: 1, izin: 1, alfa: 0, pct: 96.0 },
   { class_name: 'Kelas 2 (Ali)', searchKey: 'Kelas 2', teacher: 'Ustadz Rizky', total: 50, hadir: 49, sakit: 1, izin: 0, alfa: 0, pct: 98.0 },
   { class_name: 'Kelas 3 (Thoriq)', searchKey: 'Kelas 3', teacher: 'Ustadz Farhan', total: 50, hadir: 47, sakit: 2, izin: 1, alfa: 0, pct: 94.0 },
   { class_name: 'Kelas 4 (Hamzah)', searchKey: 'Kelas 4', teacher: 'Ustadz Abdullah', total: 50, hadir: 50, sakit: 0, izin: 0, alfa: 0, pct: 100.0 },
@@ -40,10 +40,11 @@ export default function AttendancePage() {
 
   const [userSession, setUserSession] = useState({
     role: 'kepsek',
-    name: 'H. Ahmad Dahlan, M.Pd',
+    name: 'Pengguna System',
+    class_name: 'Kelas 1 (Abu Bakar)',
   });
 
-  // State untuk langsung menampilkan 50 siswa kelas binaan guru
+  // State untuk menampilkan siswa kelas binaan guru
   const [teacherStudents, setTeacherStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,24 +63,28 @@ export default function AttendancePage() {
   }, []);
 
   const isTeacher = userSession.role === 'guru';
+  const assignedClassTitle = userSession.class_name || 'Kelas 1 (Abu Bakar)';
 
-  // Fetch 50 siswa langsung dari Supabase untuk tampilan Guru (Kelas 4)
+  // Fetch siswa DYNAMIC dari Supabase sesuai Kelas Binaan Guru
   useEffect(() => {
     if (!isTeacher) return;
 
     const fetchClassStudents = async () => {
       setLoadingStudents(true);
       try {
+        // Ambil kata kunci kelas (misal: "Kelas 1")
+        const classKeyword = assignedClassTitle.split(' ')[1] || assignedClassTitle;
+
         const { data, error } = await supabase
           .from('students')
           .select('*')
-          .ilike('class_name', '%Kelas 4%')
+          .ilike('class_name', `%${classKeyword}%`)
           .order('full_name', { ascending: true });
 
         if (!error && data) {
           const mapped = data.map((st) => ({
             ...st,
-            attendance_status: 'Hadir',
+            attendance_status: st.attendance_status || 'Hadir',
           }));
           setTeacherStudents(mapped);
         }
@@ -91,9 +96,9 @@ export default function AttendancePage() {
     };
 
     fetchClassStudents();
-  }, [isTeacher]);
+  }, [isTeacher, assignedClassTitle]);
 
-  // Fetch 50 Siswa dari Supabase saat Kepsek Menekan Tombol "Inspeksi" (POIN 1)
+  // Fetch Siswa dari Supabase saat Kepsek Menekan Tombol "Inspeksi"
   useEffect(() => {
     if (!selectedClassModal) return;
 
@@ -156,19 +161,19 @@ export default function AttendancePage() {
             <CalendarCheck2 className="w-6 h-6 text-emerald-700" />
             <span>
               {isTeacher
-                ? 'Data Absensi Siswa Kelas 4 (Hamzah)'
+                ? `Data Absensi Siswa - ${assignedClassTitle}`
                 : 'Data Absensi Guru & Siswa'}
             </span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
             {isTeacher
-              ? 'Pusat pemantauan presensi harian siswa binaan Kelas 4 (Hamzah).'
+              ? `Pusat pemantauan presensi harian siswa binaan ${assignedClassTitle}.`
               : 'Pusat pemantauan presensi harian terintegrasi dari seluruh Wali Kelas SDIT Al Ihsan.'}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-black text-emerald-900">
           <Calendar className="w-4 h-4 text-emerald-700" />
-          <span>Rabu, 29 Juli 2026</span>
+          <span>Kamis, 30 Juli 2026</span>
         </div>
       </div>
 
@@ -179,11 +184,11 @@ export default function AttendancePage() {
             <div>
               <h2 className="text-sm font-black text-emerald-950">
                 {isTeacher
-                  ? 'Grafik Kehadiran Kelas 4 Hari Ini'
+                  ? `Grafik Kehadiran ${assignedClassTitle} Hari Ini`
                   : 'Grafik Kehadiran Siswa Hari Ini'}
               </h2>
               <p className="text-[11px] font-bold text-slate-600">
-                {isTeacher ? 'Total 50 Murid Terdaftar' : 'Total 300 Siswa Terdaftar'}
+                {isTeacher ? `Total ${teacherStudents.length || 50} Murid Terdaftar` : 'Total 300 Siswa Terdaftar'}
               </p>
             </div>
             <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300">
@@ -195,7 +200,7 @@ export default function AttendancePage() {
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-black">
                 <span className="text-emerald-900">
-                  {isTeacher ? 'Hadir (50 Siswa)' : 'Hadir (288 Siswa)'}
+                  {isTeacher ? `Hadir (${teacherStudents.length || 50} Siswa)` : 'Hadir (288 Siswa)'}
                 </span>
                 <span className="text-emerald-700">{isTeacher ? '100.0%' : '96.0%'}</span>
               </div>
@@ -229,11 +234,11 @@ export default function AttendancePage() {
             <div>
               <h2 className="text-sm font-black text-emerald-950">
                 {isTeacher
-                  ? 'Status Presensi Pengajar (Ustadz Abdullah)'
+                  ? `Status Presensi Pengajar (${userSession.name})`
                   : 'Grafik Kehadiran Pendidik / Guru'}
               </h2>
               <p className="text-[11px] font-bold text-slate-600">
-                {isTeacher ? 'Wali Kelas 4 (Hamzah)' : 'Total 49 Guru & Staf Operasional'}
+                {isTeacher ? `Wali Kelas - ${assignedClassTitle}` : 'Total 49 Guru & Staf Operasional'}
               </p>
             </div>
             <span className="text-xs font-black text-teal-900 bg-teal-100 px-2.5 py-1 rounded-full border border-teal-300">
@@ -267,7 +272,7 @@ export default function AttendancePage() {
               : 'bg-white text-slate-700 hover:bg-emerald-100'
           }`}
         >
-          {isTeacher ? 'Daftar Presensi 50 Siswa Kelas 4' : 'Rekapitulasi Absensi Siswa Per Kelas'}
+          {isTeacher ? `Daftar Presensi Siswa ${assignedClassTitle}` : 'Rekapitulasi Absensi Siswa Per Kelas'}
         </button>
         {!isTeacher && (
           <button
@@ -283,17 +288,17 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {/* VIEW GURU: TABEL 50 SISWA LANGSUNG */}
+      {/* VIEW GURU: TABEL SISWA KELAS BINAAN DYNAMIC */}
       {activeTab === 'siswa' && isTeacher && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-emerald-100 pb-3">
             <div>
               <h3 className="text-sm font-black text-emerald-950 flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-700" />
-                <span>Presensi Harian Seluruh Siswa Kelas 4 (Hamzah)</span>
+                <span>Presensi Harian Seluruh Siswa - {assignedClassTitle}</span>
               </h3>
               <p className="text-xs font-bold text-slate-600 mt-0.5">
-                Wali Kelas: Ustadz Abdullah • Total {teacherStudents.length} Murid
+                Wali Kelas: {userSession.name} • Total {teacherStudents.length} Murid Terdata
               </p>
             </div>
             <div className="relative w-full sm:w-64">
@@ -325,7 +330,7 @@ export default function AttendancePage() {
                     <td colSpan={5} className="p-8 text-center text-emerald-800">
                       <div className="flex items-center justify-center gap-2 font-black">
                         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                        <span>Mengambil Data 50 Siswa Kelas 4 dari Database Supabase...</span>
+                        <span>Mengambil Data Siswa {assignedClassTitle} dari Database Supabase...</span>
                       </div>
                     </td>
                   </tr>
@@ -336,7 +341,7 @@ export default function AttendancePage() {
                       <td className="p-3 text-emerald-900 font-mono font-black">{st.nisn}</td>
                       <td className="p-3 font-black text-slate-900">{st.full_name}</td>
                       <td className="p-3 text-slate-600">
-                        {st.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}
+                        {st.gender === 'L' || st.gender === 'Laki-laki' ? 'Laki-Laki' : 'Perempuan'}
                       </td>
                       <td className="p-3 text-center">
                         <div className="inline-flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
@@ -366,7 +371,7 @@ export default function AttendancePage() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
-                      Tidak ada siswa ditemukan dengan kata kunci tersebut.
+                      Tidak ada siswa ditemukan untuk kelas binaan ini.
                     </td>
                   </tr>
                 )}
@@ -381,7 +386,7 @@ export default function AttendancePage() {
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-emerald-950">
-              Laporan Presensi Inputan Wali Kelas (29 Juli 2026)
+              Laporan Presensi Inputan Wali Kelas (30 Juli 2026)
             </h3>
             <span className="text-xs font-black text-emerald-900 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full">
               6/6 Kelas Selesai Input
@@ -424,7 +429,7 @@ export default function AttendancePage() {
                           setModalSearchQuery('');
                           setSelectedClassModal(row);
                         }}
-                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl flex items-center gap-1 mx-auto shadow-sm transition-all"
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl flex items-center gap-1 mx-auto shadow-sm transition-all cursor-pointer"
                       >
                         <span>Inspeksi</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -479,7 +484,7 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* MODAL INSPEKSI KEPSEK: MENAMPILKAN SELURUH 50 SISWA DARI SUPABASE (POIN 1) */}
+      {/* MODAL INSPEKSI KEPSEK */}
       {selectedClassModal && !isTeacher && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden flex flex-col max-h-[85vh]">
@@ -490,7 +495,7 @@ export default function AttendancePage() {
               </h3>
               <button
                 onClick={() => setSelectedClassModal(null)}
-                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors"
+                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -549,7 +554,7 @@ export default function AttendancePage() {
                         <td colSpan={5} className="p-8 text-center text-emerald-800">
                           <div className="flex items-center justify-center gap-2 font-black">
                             <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                            <span>Mengambil Data 50 Siswa dari Database Supabase...</span>
+                            <span>Mengambil Data Siswa dari Database Supabase...</span>
                           </div>
                         </td>
                       </tr>
