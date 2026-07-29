@@ -1,12 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import {
   CalendarCheck2,
   Calendar,
   ChevronRight,
   X,
   UserCheck,
+  Search,
+  Loader2,
+  Users,
 } from 'lucide-react';
 
 const TEACHER_ATTENDANCE_LOG = [
@@ -28,12 +32,17 @@ const STUDENT_ATTENDANCE_SUMMARY = [
 ];
 
 export default function AttendancePage() {
-  const [activeTab, setActiveTab] = useState('siswa'); // 'siswa' atau 'guru'
+  const [activeTab, setActiveTab] = useState('siswa');
   const [selectedClassModal, setSelectedClassModal] = useState(null);
   const [userSession, setUserSession] = useState({
     role: 'kepsek',
     name: 'H. Ahmad Dahlan, M.Pd',
   });
+
+  // State untuk langsung menampilkan 50 siswa kelas binaan guru
+  const [teacherStudents, setTeacherStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -50,14 +59,47 @@ export default function AttendancePage() {
 
   const isTeacher = userSession.role === 'guru';
 
-  // Filtering Data Presensi Khusus Guru vs Kepsek
-  const filteredStudentSummary = isTeacher
-    ? STUDENT_ATTENDANCE_SUMMARY.filter((item) => item.class_name.includes('Kelas 4'))
-    : STUDENT_ATTENDANCE_SUMMARY;
+  // Fetch 50 siswa langsung dari Supabase untuk tampilan Guru (Kelas 4)
+  useEffect(() => {
+    if (!isTeacher) return;
 
-  const filteredTeacherLog = isTeacher
-    ? TEACHER_ATTENDANCE_LOG.filter((item) => item.name === 'Ustadz Abdullah')
-    : TEACHER_ATTENDANCE_LOG;
+    const fetchClassStudents = async () => {
+      setLoadingStudents(true);
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .ilike('class_name', '%Kelas 4%')
+          .order('full_name', { ascending: true });
+
+        if (!error && data) {
+          const mapped = data.map((st) => ({
+            ...st,
+            attendance_status: 'Hadir', // Default 100% Hadir sesuai gambar 1
+          }));
+          setTeacherStudents(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching teacher students:', err);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+
+    fetchClassStudents();
+  }, [isTeacher]);
+
+  const toggleStudentStatus = (id, newStatus) => {
+    setTeacherStudents((prev) =>
+      prev.map((st) => (st.id === id ? { ...st, attendance_status: newStatus } : st))
+    );
+  };
+
+  const filteredTeacherStudents = teacherStudents.filter(
+    (st) =>
+      st.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      st.nisn.includes(searchQuery)
+  );
 
   return (
     <div className="space-y-6">
@@ -86,7 +128,6 @@ export default function AttendancePage() {
 
       {/* GRAFIK & STATISTIK RINGKASAN KEHADIRAN HARI INI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Grafik Ringkasan Kehadiran Siswa */}
         <div className="bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-emerald-100 pb-3">
             <div>
@@ -137,7 +178,6 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {/* Grafik Ringkasan Kehadiran Guru */}
         <div className="bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-emerald-100 pb-3">
             <div>
@@ -181,29 +221,124 @@ export default function AttendancePage() {
               : 'bg-white text-slate-700 hover:bg-emerald-100'
           }`}
         >
-          {isTeacher ? 'Rekapitulasi Absensi Kelas 4' : 'Rekapitulasi Absensi Siswa Per Kelas'}
+          {isTeacher ? 'Daftar Presensi 50 Siswa Kelas 4' : 'Rekapitulasi Absensi Siswa Per Kelas'}
         </button>
-        <button
-          onClick={() => setActiveTab('guru')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-            activeTab === 'guru'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-white text-slate-700 hover:bg-emerald-100'
-          }`}
-        >
-          {isTeacher ? 'Status Log Presensi Mandiri' : 'Log Presensi Guru Hari Ini'}
-        </button>
+        {!isTeacher && (
+          <button
+            onClick={() => setActiveTab('guru')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              activeTab === 'guru'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : 'bg-white text-slate-700 hover:bg-emerald-100'
+            }`}
+          >
+            Log Presensi Guru Hari Ini
+          </button>
+        )}
       </div>
 
-      {/* VIEW 1: REKAPITULASI SISWA PER KELAS */}
-      {activeTab === 'siswa' && (
+      {/* VIEW 1: JIKA GURU -> TAMPILKAN LANGSUNG 50 SISWA KELAS BINAAN */}
+      {activeTab === 'siswa' && isTeacher && (
+        <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-emerald-100 pb-3">
+            <div>
+              <h3 className="text-sm font-black text-emerald-950 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-700" />
+                <span>Presensi Harian Seluruh Siswa Kelas 4 (Hamzah)</span>
+              </h3>
+              <p className="text-xs font-bold text-slate-600 mt-0.5">
+                Wali Kelas: Ustadz Abdullah • Total {teacherStudents.length} Murid
+              </p>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Cari nama / NISN..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-bold border-collapse">
+              <thead>
+                <tr className="bg-emerald-100/80 text-emerald-950 font-black border-b border-emerald-200">
+                  <th className="p-3">No</th>
+                  <th className="p-3">NISN</th>
+                  <th className="p-3">Nama Lengkap Siswa</th>
+                  <th className="p-3">Jenis Kelamin</th>
+                  <th className="p-3 text-center">Status Presensi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
+                {loadingStudents ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-emerald-800">
+                      <div className="flex items-center justify-center gap-2 font-black">
+                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                        <span>Mengambil Data 50 Siswa Kelas 4 dari Database Supabase...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredTeacherStudents.length > 0 ? (
+                  filteredTeacherStudents.map((st, idx) => (
+                    <tr key={st.id || idx} className="hover:bg-emerald-50/50 transition-colors">
+                      <td className="p-3 text-slate-500 font-mono">{idx + 1}</td>
+                      <td className="p-3 text-emerald-900 font-mono font-black">{st.nisn}</td>
+                      <td className="p-3 font-black text-slate-900">{st.full_name}</td>
+                      <td className="p-3 text-slate-600">
+                        {st.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="inline-flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                          {['Hadir', 'Sakit', 'Izin', 'Alfa'].map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => toggleStudentStatus(st.id, status)}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                                st.attendance_status === status
+                                  ? status === 'Hadir'
+                                    ? 'bg-emerald-700 text-white shadow-sm'
+                                    : status === 'Sakit'
+                                    ? 'bg-amber-600 text-white shadow-sm'
+                                    : status === 'Izin'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-rose-600 text-white shadow-sm'
+                                  : 'text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
+                      Tidak ada siswa ditemukan dengan kata kunci tersebut.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 2: JIKA KEPSEK -> TAMPILKAN REKAPITULASI 6 KELAS */}
+      {activeTab === 'siswa' && !isTeacher && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-emerald-950">
               Laporan Presensi Inputan Wali Kelas (29 Juli 2026)
             </h3>
             <span className="text-xs font-black text-emerald-900 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full">
-              {isTeacher ? '1/1 Kelas Selesai Input' : '6/6 Kelas Selesai Input'}
+              6/6 Kelas Selesai Input
             </span>
           </div>
 
@@ -223,7 +358,7 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-100">
-                {filteredStudentSummary.map((row, idx) => (
+                {STUDENT_ATTENDANCE_SUMMARY.map((row, idx) => (
                   <tr key={idx} className="hover:bg-emerald-50/70 transition-colors">
                     <td className="p-3 font-black text-slate-900">{row.class_name}</td>
                     <td className="p-3 text-slate-700">{row.teacher}</td>
@@ -254,15 +389,15 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* VIEW 2: LOG PRESENSI GURU */}
-      {activeTab === 'guru' && (
+      {/* VIEW LOG PRESENSI GURU (KEPSEK) */}
+      {activeTab === 'guru' && !isTeacher && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-emerald-950">
               Daftar Presensi Kehadiran Guru & Tenaga Pendidik
             </h3>
             <span className="text-xs font-black text-teal-900 bg-teal-100 border border-teal-300 px-2.5 py-1 rounded-full">
-              {isTeacher ? 'Hadir Tepat Waktu' : '48 Hadir | 1 Izin Dinas'}
+              48 Hadir | 1 Izin Dinas
             </span>
           </div>
 
@@ -277,7 +412,7 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-teal-100">
-                {filteredTeacherLog.map((guru) => (
+                {TEACHER_ATTENDANCE_LOG.map((guru) => (
                   <tr key={guru.id} className="hover:bg-teal-50/50">
                     <td className="p-3 font-black text-slate-900">{guru.name}</td>
                     <td className="p-3 text-slate-700">{guru.role}</td>
@@ -295,7 +430,7 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* MODAL INSPEKSI PRESENSI SISWA PER KELAS */}
+      {/* MODAL INSPEKSI PRESENSI SISWA PER KELAS (KEPSEK) */}
       {selectedClassModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
@@ -324,8 +459,6 @@ export default function AttendancePage() {
                   Kehadiran: {selectedClassModal.pct}%
                 </p>
               </div>
-
-              <p className="text-slate-700">Status Murid Hari Ini:</p>
 
               <div className="p-4 bg-emerald-100 text-emerald-900 rounded-xl text-center font-black border border-emerald-300">
                 Masya Allah! Seluruh 50 Murid {selectedClassModal.class_name} Hadir 100% Hari Ini.

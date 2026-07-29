@@ -32,7 +32,7 @@ const NAVIGATION_ITEMS = [
     roles: ['kepsek'], // HANYA KEPSEK
   },
   {
-    name: 'Data Absensi Guru & Siswa',
+    name: 'Data Absensi Siswa', // RE-LABEL SESUAI PERMINTAAN USER
     href: '/attendance',
     icon: CalendarCheck2,
     roles: ['kepsek', 'guru'],
@@ -101,7 +101,7 @@ export default function Sidebar() {
 
   return (
     <aside className="print:hidden hidden lg:flex flex-col w-64 bg-white text-emerald-950 h-screen border-r-2 border-emerald-200 shrink-0 sticky top-0 shadow-md">
-      {/* Header Branding - High Contrast */}
+      {/* Header Branding */}
       <div className="p-5 border-b-2 border-emerald-100 flex items-center gap-3 bg-gradient-to-r from-emerald-100/70 via-emerald-50 to-white">
         <div className="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center font-black text-white text-base shadow-md ring-2 ring-emerald-300">
           AI
@@ -117,7 +117,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation Links - Filtered by Role */}
+      {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
         <div className="px-3 pb-2 text-[11px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
