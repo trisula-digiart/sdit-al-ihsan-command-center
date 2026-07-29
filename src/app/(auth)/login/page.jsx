@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import {
-  Building,
   ShieldCheck,
   ArrowRight,
   Lock,
@@ -79,20 +78,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-slate-950 text-slate-100 font-sans">
-      {/* SISI KIRI: FULL GAMBAR ISLAMI HIGH-RESOLUTION DENGAN OVERLAY MEWAH */}
+    <div className="min-h-screen w-full flex bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 text-slate-100 font-sans">
+      {/* SISI KIRI: VISUAL HERO BANNER ISLAMI HIGH-RESOLUTION */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12 border-r-2 border-emerald-800/40">
         {/* Full Image Background Arsitektur Islami Megah */}
         <div
-          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-10000 hover:scale-100"
+          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-10000 hover:scale-100 opacity-25 mix-blend-overlay"
           style={{
             backgroundImage:
               'url("https://images.unsplash.com/photo-1542816417-0983cbe82752?q=80&w=2070&auto=format&fit=crop")',
           }}
         />
 
-        {/* Gradient Overlay Transparan Bernuansa Emerald & Shadow */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/95 via-emerald-950/80 to-slate-950/60 z-10" />
+        {/* Gradient Overlay Transparan Emerald */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/90 via-emerald-900/70 to-emerald-950/80 z-10" />
 
         {/* Top Header Branding (Dynamic Supabase) */}
         <div className="relative z-20 flex items-center gap-3">
@@ -158,9 +157,9 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* SISI KANAN: FORM LOGIN CARD ENTERPRISE */}
-      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 md:p-12 bg-slate-950 relative">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border-2 border-emerald-200 text-slate-900 space-y-6 relative z-10">
+      {/* SISI KANAN: FORM LOGIN CARD ENTERPRISE DENGAN UNIFIED GREEN GRADIENT */}
+      <div className="w-full lg:w-2/5 flex flex-col items-center justify-between p-6 md:p-12 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 relative">
+        <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border-2 border-emerald-200 text-slate-900 space-y-6 my-auto relative z-10">
           
           {/* Header Form Portal */}
           <div className="space-y-2 border-b-2 border-emerald-100 pb-5">
@@ -236,6 +235,20 @@ export default function LoginPage() {
               <span>Terkoneksi Database Supabase Cloud Realtime</span>
             </div>
           </form>
+        </div>
+
+        {/* FOOTER DEVELOPER BRANDING (K2C KOMPUTINDO) */}
+        <div className="relative z-10 pt-6 text-center space-y-1">
+          <p className="text-xs font-black text-amber-300 tracking-wide">
+            Powered by K2C Komputindo
+          </p>
+          <p className="text-[11px] font-bold text-emerald-200">
+            Building Smart Digital Solutions
+          </p>
+          <p className="text-[10px] font-mono text-emerald-300 flex items-center justify-center gap-1 pt-0.5">
+            <Mail className="w-3 h-3 text-amber-400" />
+            <span>kanz.alistianm@gmail.com</span>
+          </p>
         </div>
       </div>
     </div>
