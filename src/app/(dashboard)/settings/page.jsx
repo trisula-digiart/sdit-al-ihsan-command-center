@@ -16,6 +16,7 @@ import {
   Image as ImageIcon,
   Upload,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 
 const INITIAL_TEACHERS = [
@@ -42,6 +43,13 @@ export default function SettingsPage() {
     logo_url: '',
     kop_logo_url: '',
   });
+
+  // State File dari Laptop untuk Preview & Upload Direct
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
+
+  const [kopLogoFile, setKopLogoFile] = useState(null);
+  const [kopLogoPreview, setKopLogoPreview] = useState('');
 
   // State Tambah Guru
   const [teachersList, setTeachersList] = useState(INITIAL_TEACHERS);
@@ -72,6 +80,9 @@ export default function SettingsPage() {
             logo_url: data.logo_url || '',
             kop_logo_url: data.kop_logo_url || '',
           });
+
+          if (data.logo_url) setLogoPreview(data.logo_url);
+          if (data.kop_logo_url) setKopLogoPreview(data.kop_logo_url);
         }
       } catch (err) {
         console.error('Error fetching school_settings from Supabase:', err);
@@ -81,20 +92,77 @@ export default function SettingsPage() {
     fetchSchoolSettings();
   }, []);
 
-  // Simpan/Update Profil Sekolah & URL Logo ke Supabase Database (POIN 2)
+  // Handler Pilih File Gambar dari Laptop
+  const handleSelectLogoFile = (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    if (type === 'app') {
+      setLogoFile(file);
+      setLogoPreview(objectUrl);
+    } else if (type === 'kop') {
+      setKopLogoFile(file);
+      setKopLogoPreview(objectUrl);
+    }
+  };
+
+  // Helper Helper Helper Upload File ke Supabase Storage Bucket
+  const uploadToSupabaseStorage = async (file, fileName) => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${fileName}_${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('school-assets')
+        .upload(filePath, file, { upsert: true });
+
+      if (error) {
+        console.error('Upload storage error:', error);
+        return null;
+      }
+
+      // Ambil Public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('school-assets')
+        .getPublicUrl(filePath);
+
+      return publicUrlData.publicUrl;
+    } catch (err) {
+      console.error('Storage exception:', err);
+      return null;
+    }
+  };
+
+  // Simpan/Update Profil Sekolah & Upload Gambar ke Supabase Storage
   const handleSaveSchoolInfo = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      let finalLogoUrl = schoolInfo.logo_url;
+      let finalKopLogoUrl = schoolInfo.kop_logo_url;
+
+      // 1. Upload Logo Aplikasi jika ada file baru terpilih
+      if (logoFile) {
+        const uploadedUrl = await uploadToSupabaseStorage(logoFile, 'app_logo');
+        if (uploadedUrl) finalLogoUrl = uploadedUrl;
+      }
+
+      // 2. Upload Logo Kop Surat jika ada file baru terpilih
+      if (kopLogoFile) {
+        const uploadedKopUrl = await uploadToSupabaseStorage(kopLogoFile, 'kop_logo');
+        if (uploadedKopUrl) finalKopLogoUrl = uploadedKopUrl;
+      }
+
       const payload = {
         school_name: schoolInfo.school_name,
         principal_name: schoolInfo.principal_name,
         address: schoolInfo.address,
         phone: schoolInfo.phone,
         email: schoolInfo.email,
-        logo_url: schoolInfo.logo_url,
-        kop_logo_url: schoolInfo.kop_logo_url,
+        logo_url: finalLogoUrl,
+        kop_logo_url: finalKopLogoUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -104,7 +172,11 @@ export default function SettingsPage() {
         .eq('id', 1);
 
       if (!error) {
-        // Sync ke localStorage untuk backup lokal
+        setSchoolInfo(payload);
+        setLogoFile(null);
+        setKopLogoFile(null);
+
+        // Sync ke localStorage untuk backup cepat lokal
         if (typeof window !== 'undefined') {
           localStorage.setItem('school_info', JSON.stringify(payload));
         }
@@ -184,63 +256,125 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* TAB 1: EDIT IDENTITAS SEKOLAH & LOGO (POIN 2) */}
+      {/* TAB 1: EDIT IDENTITAS SEKOLAH & FILE UPLOAD LOGO */}
       {activeTab === 'identity' && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-6 shadow-sm space-y-6">
           <div className="border-b-2 border-emerald-100 pb-3">
             <h2 className="text-sm font-black text-emerald-950 flex items-center gap-2">
               <Building className="w-4 h-4 text-emerald-700" />
-              <span>Formulir Identitas Resmi Sekolah, Kepala Sekolah & Logo Kop</span>
+              <span>Formulir Identitas Resmi Sekolah, Kepala Sekolah & Upload Logo</span>
             </h2>
             <p className="text-xs font-bold text-slate-600 mt-0.5">
-              Data dan logo ini tersimpan permanen di database Supabase dan langsung tersinkronkan pada kop surat resmi.
+              Upload logo dari komputer kamu. Berkas akan otomatis tersimpan di Supabase Cloud Storage dan sinkron ke seluruh perangkat.
             </p>
           </div>
 
           {savedSuccess && (
             <div className="p-3 bg-emerald-100 border-2 border-emerald-300 text-emerald-950 font-black text-xs rounded-xl flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-              <span>Data profil dan logo sekolah berhasil disimpan secara permanen ke Database Supabase!</span>
+              <span>Identitas & Berkas Logo Sekolah Berhasil Di-upload Permanen ke Cloud Supabase!</span>
             </div>
           )}
 
           <form onSubmit={handleSaveSchoolInfo} className="space-y-5 text-xs font-bold text-slate-800">
-            {/* SECTION UPLOAD LOGO SEKOLAH & LOGO KOP SURAT */}
-            <div className="p-4 bg-emerald-50/60 border-2 border-emerald-200 rounded-2xl space-y-3">
-              <h3 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+            {/* SECTION UPLOAD FILE LOGO DARIKOMPUTER / LAPTOP */}
+            <div className="p-5 bg-emerald-50/60 border-2 border-emerald-200 rounded-2xl space-y-4">
+              <h3 className="text-xs font-black text-emerald-950 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-emerald-700" />
-                <span>Logo Utama Sekolah & Logo Kop Surat Resmi</span>
+                <span>Upload Berkas Logo dari Komputer / Laptop (PNG / JPG / WebP)</span>
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Logo Utama Application */}
-                <div className="space-y-1.5">
-                  <label className="block font-black text-slate-900">URL / Link Logo Utama Sekolah</label>
-                  <input
-                    type="text"
-                    placeholder="https://domain.com/logo-sekolah.png"
-                    value={schoolInfo.logo_url}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, logo_url: e.target.value })}
-                    className="w-full p-2.5 bg-white border-2 border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                  />
-                  <p className="text-[10px] text-slate-500">
-                    Digunakan di Sidebar, Topbar, dan Icon Aplikasi Web.
-                  </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. File Uploader Logo Utama Aplikasi */}
+                <div className="bg-white p-4 rounded-xl border-2 border-emerald-200 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <label className="block font-black text-slate-900 mb-1">
+                      1. Logo Utama Aplikasi / Web
+                    </label>
+                    <p className="text-[10px] text-slate-500 mb-3">
+                      Tampil pada Sidebar, Topbar, dan Brand Header aplikasi.
+                    </p>
+
+                    <div className="flex items-center gap-4">
+                      {logoPreview ? (
+                        <div className="w-16 h-16 rounded-xl border-2 border-emerald-300 p-1 bg-white shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={logoPreview}
+                            alt="Logo Utama"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 shrink-0 flex items-center justify-center font-black text-emerald-800 text-xs">
+                          AI
+                        </div>
+                      )}
+
+                      <div className="flex-1">
+                        <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl transition-all shadow-sm">
+                          <Upload className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Pilih Gambar...</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSelectLogoFile(e, 'app')}
+                            className="hidden"
+                          />
+                        </label>
+                        {logoFile && (
+                          <p className="text-[10px] text-emerald-800 font-extrabold mt-1 truncate">
+                            File terpilih: {logoFile.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Logo Kop Surat */}
-                <div className="space-y-1.5">
-                  <label className="block font-black text-slate-900">URL / Link Logo Kop Surat Resmi</label>
-                  <input
-                    type="text"
-                    placeholder="https://domain.com/logo-kop-surat.png"
-                    value={schoolInfo.kop_logo_url}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, kop_logo_url: e.target.value })}
-                    className="w-full p-2.5 bg-white border-2 border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                  />
-                  <p className="text-[10px] text-slate-500">
-                    Tersinkronkan otomatis pada Kop Surat Resmi Document Generator.
-                  </p>
+                {/* 2. File Uploader Logo Kop Surat Resmi */}
+                <div className="bg-white p-4 rounded-xl border-2 border-emerald-200 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <label className="block font-black text-slate-900 mb-1">
+                      2. Logo Khusus Kop Surat Resmi
+                    </label>
+                    <p className="text-[10px] text-slate-500 mb-3">
+                      Tersinkronkan otomatis pada Kop Surat Surat Resmi Document Generator.
+                    </p>
+
+                    <div className="flex items-center gap-4">
+                      {kopLogoPreview ? (
+                        <div className="w-16 h-16 rounded-xl border-2 border-emerald-300 p-1 bg-white shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={kopLogoPreview}
+                            alt="Logo Kop"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 shrink-0 flex items-center justify-center font-black text-emerald-800 text-xs">
+                          KOP
+                        </div>
+                      )}
+
+                      <div className="flex-1">
+                        <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl transition-all shadow-sm">
+                          <Upload className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Pilih Gambar...</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSelectLogoFile(e, 'kop')}
+                            className="hidden"
+                          />
+                        </label>
+                        {kopLogoFile && (
+                          <p className="text-[10px] text-emerald-800 font-extrabold mt-1 truncate">
+                            File terpilih: {kopLogoFile.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -328,7 +462,7 @@ export default function SettingsPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Menyimpan ke Supabase Database...</span>
+                    <span>Mengunggah File & Menyimpan ke Supabase...</span>
                   </>
                 ) : (
                   <>
