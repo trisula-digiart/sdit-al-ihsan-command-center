@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import {
   Settings,
   Building,
@@ -12,6 +13,9 @@ import {
   User,
   Phone,
   MapPin,
+  Image as ImageIcon,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 
 const INITIAL_TEACHERS = [
@@ -25,16 +29,19 @@ const INITIAL_TEACHERS = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('identity');
+  const [loading, setLoading] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // State Profil Sekolah
+  // State Profil Sekolah & URL Logo (Disimpan ke Supabase Database)
   const [schoolInfo, setSchoolInfo] = useState({
     school_name: 'SDIT Al Ihsan Integrated School',
     principal_name: 'H. Ahmad Dahlan, M.Pd',
     address: 'Jl. Kebajikan No. 45, Kecamatan Beji, Kota Depok, Jawa Barat',
     phone: '021-77889900',
     email: 'info@sditalihsan.sch.id',
+    logo_url: '',
+    kop_logo_url: '',
   });
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   // State Tambah Guru
   const [teachersList, setTeachersList] = useState(INITIAL_TEACHERS);
@@ -46,10 +53,71 @@ export default function SettingsPage() {
   });
   const [teacherSuccess, setTeacherSuccess] = useState(false);
 
-  const handleSaveSchoolInfo = (e) => {
+  // Load Profil Sekolah dari Database Supabase Saat Halaman Dibuka
+  useEffect(() => {
+    const fetchSchoolSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('school_settings')
+          .select('*')
+          .single();
+
+        if (!error && data) {
+          setSchoolInfo({
+            school_name: data.school_name || 'SDIT Al Ihsan Integrated School',
+            principal_name: data.principal_name || 'H. Ahmad Dahlan, M.Pd',
+            address: data.address || 'Jl. Kebajikan No. 45, Beji, Depok',
+            phone: data.phone || '021-77889900',
+            email: data.email || 'info@sditalihsan.sch.id',
+            logo_url: data.logo_url || '',
+            kop_logo_url: data.kop_logo_url || '',
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching school_settings from Supabase:', err);
+      }
+    };
+
+    fetchSchoolSettings();
+  }, []);
+
+  // Simpan/Update Profil Sekolah & URL Logo ke Supabase Database (POIN 2)
+  const handleSaveSchoolInfo = async (e) => {
     e.preventDefault();
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setLoading(true);
+
+    try {
+      const payload = {
+        school_name: schoolInfo.school_name,
+        principal_name: schoolInfo.principal_name,
+        address: schoolInfo.address,
+        phone: schoolInfo.phone,
+        email: schoolInfo.email,
+        logo_url: schoolInfo.logo_url,
+        kop_logo_url: schoolInfo.kop_logo_url,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('school_settings')
+        .update(payload)
+        .eq('id', 1);
+
+      if (!error) {
+        // Sync ke localStorage untuk backup lokal
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('school_info', JSON.stringify(payload));
+        }
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+      } else {
+        console.error('Supabase update error:', error);
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddTeacher = (e) => {
@@ -81,7 +149,7 @@ export default function SettingsPage() {
             <span>Pengaturan Sistem & Manajemen Akses</span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
-            Kelola identitas resmi sekolah dan pendaftaran akun akses Guru / Wali Kelas.
+            Kelola identitas resmi sekolah, logo kop surat, dan pendaftaran akun akses Guru / Wali Kelas.
           </p>
         </div>
         <div className="px-3 py-1.5 bg-emerald-100 border border-emerald-300 rounded-xl text-emerald-900 font-black text-xs">
@@ -100,7 +168,7 @@ export default function SettingsPage() {
           }`}
         >
           <Building className="w-4 h-4" />
-          <span>Identitas Profil Sekolah</span>
+          <span>Identitas Profil & Logo Sekolah</span>
         </button>
 
         <button
@@ -116,27 +184,67 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* TAB 1: EDIT IDENTITAS SEKOLAH & KEPALA SEKOLAH */}
+      {/* TAB 1: EDIT IDENTITAS SEKOLAH & LOGO (POIN 2) */}
       {activeTab === 'identity' && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-6 shadow-sm space-y-6">
           <div className="border-b-2 border-emerald-100 pb-3">
             <h2 className="text-sm font-black text-emerald-950 flex items-center gap-2">
               <Building className="w-4 h-4 text-emerald-700" />
-              <span>Formulir Identitas Resmi Sekolah & Kepala Sekolah</span>
+              <span>Formulir Identitas Resmi Sekolah, Kepala Sekolah & Logo Kop</span>
             </h2>
             <p className="text-xs font-bold text-slate-600 mt-0.5">
-              Data ini akan ditampilkan pada kop surat, laporan executive, dan sertifikat resmi.
+              Data dan logo ini tersimpan permanen di database Supabase dan langsung tersinkronkan pada kop surat resmi.
             </p>
           </div>
 
           {savedSuccess && (
             <div className="p-3 bg-emerald-100 border-2 border-emerald-300 text-emerald-950 font-black text-xs rounded-xl flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-              <span>Data profil sekolah berhasil diperbarui di sistem!</span>
+              <span>Data profil dan logo sekolah berhasil disimpan secara permanen ke Database Supabase!</span>
             </div>
           )}
 
-          <form onSubmit={handleSaveSchoolInfo} className="space-y-4 text-xs font-bold text-slate-800">
+          <form onSubmit={handleSaveSchoolInfo} className="space-y-5 text-xs font-bold text-slate-800">
+            {/* SECTION UPLOAD LOGO SEKOLAH & LOGO KOP SURAT */}
+            <div className="p-4 bg-emerald-50/60 border-2 border-emerald-200 rounded-2xl space-y-3">
+              <h3 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-emerald-700" />
+                <span>Logo Utama Sekolah & Logo Kop Surat Resmi</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Logo Utama Application */}
+                <div className="space-y-1.5">
+                  <label className="block font-black text-slate-900">URL / Link Logo Utama Sekolah</label>
+                  <input
+                    type="text"
+                    placeholder="https://domain.com/logo-sekolah.png"
+                    value={schoolInfo.logo_url}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, logo_url: e.target.value })}
+                    className="w-full p-2.5 bg-white border-2 border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    Digunakan di Sidebar, Topbar, dan Icon Aplikasi Web.
+                  </p>
+                </div>
+
+                {/* Logo Kop Surat */}
+                <div className="space-y-1.5">
+                  <label className="block font-black text-slate-900">URL / Link Logo Kop Surat Resmi</label>
+                  <input
+                    type="text"
+                    placeholder="https://domain.com/logo-kop-surat.png"
+                    value={schoolInfo.kop_logo_url}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, kop_logo_url: e.target.value })}
+                    className="w-full p-2.5 bg-white border-2 border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    Tersinkronkan otomatis pada Kop Surat Resmi Document Generator.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block font-black text-slate-900 mb-1">Nama Resmi Sekolah</label>
@@ -214,20 +322,29 @@ export default function SettingsPage() {
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
+                disabled={loading}
                 className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
               >
-                <Save className="w-4 h-4" />
-                <span>Simpan Perubahan Identitas</span>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan ke Supabase Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Perubahan Identitas & Logo</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* TAB 2: MENAMBAH AKUN GURU & MANAGEMENT */}
+      {/* TAB 2: MANAJEMEN AKUN GURU */}
       {activeTab === 'teachers' && (
         <div className="space-y-6">
-          {/* Form Tambah Guru Baru */}
           <div className="bg-white border-2 border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="border-b-2 border-emerald-100 pb-3">
               <h2 className="text-sm font-black text-emerald-950 flex items-center gap-2">
@@ -315,7 +432,6 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          {/* Tabel Daftar Guru Terdaftar */}
           <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3">
               <h3 className="text-sm font-black text-emerald-950 flex items-center gap-2">

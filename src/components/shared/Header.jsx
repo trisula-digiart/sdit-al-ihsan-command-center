@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, Search, Radio, Clock, X, CheckCheck, Info, AlertTriangle, MessageSquare } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
+import { Bell, Search, Radio, Clock, X, CheckCheck, Info, AlertTriangle, MessageSquare, GraduationCap, User } from 'lucide-react';
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -31,11 +33,18 @@ const INITIAL_NOTIFICATIONS = [
 ];
 
 export default function Header({ currentRole = 'Kepala Sekolah' }) {
+  const router = useRouter();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [timeString, setTimeString] = useState('');
 
-  // Dynamic Session State (Membaca dari Login)
+  // Global Search State (POIN 3)
+  const [globalQuery, setGlobalQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Dynamic Session State
   const [userSession, setUserSession] = useState({
     name: currentRole === 'Kepala Sekolah' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
     title: currentRole,
@@ -56,7 +65,6 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
     };
     updateClock();
 
-    // Membaca session login jika tersedia
     if (typeof window !== 'undefined') {
       const storedSession = localStorage.getItem('user_session');
       if (storedSession) {
@@ -66,11 +74,42 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
             setUserSession(parsed);
           }
         } catch (err) {
-          console.error('Failed to parse user session:', err);
+          console.error(err);
         }
       }
     }
   }, [currentRole]);
+
+  // Global Live Search Handler (POIN 3)
+  useEffect(() => {
+    if (!globalQuery.trim()) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      setSearchOpen(true);
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('id, full_name, class_name, nisn')
+          .ilike('full_name', `%${globalQuery}%`)
+          .limit(5);
+
+        if (!error && data) {
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [globalQuery]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -100,17 +139,60 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
   };
 
   return (
-    <header className="print:hidden bg-white border-b-2 border-emerald-200 h-16 px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-      {/* Search Input - High Contrast Text */}
-      <div className="flex items-center gap-4 flex-1 max-w-md">
+    <header className="print:hidden bg-white border-b-2 border-emerald-200 h-16 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      {/* Global Command Search Bar (POIN 3) */}
+      <div className="flex items-center gap-4 flex-1 max-w-md relative">
         <div className="relative w-full">
           <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3 font-bold" />
           <input
             type="text"
-            placeholder="Cari siswa, guru, fasilitas, atau dokumen..."
+            placeholder="Cari nama siswa, NISN, guru, atau dokumen..."
+            value={globalQuery}
+            onChange={(e) => setGlobalQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border-2 border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-900 font-bold placeholder-slate-500"
           />
         </div>
+
+        {/* Search Results Live Dropdown */}
+        {searchOpen && (
+          <div className="absolute left-0 right-0 top-11 bg-white border-2 border-emerald-200 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-emerald-100">
+              <span className="text-[10px] font-black text-emerald-950 uppercase">Hasil Pencarian Live</span>
+              <button onClick={() => setSearchOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="divide-y divide-emerald-50 max-h-60 overflow-y-auto">
+              {searchLoading ? (
+                <div className="p-4 text-center text-xs font-bold text-emerald-800">Mencari di Database...</div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      router.push(userSession.role === 'guru' ? '/attendance' : '/students');
+                    }}
+                    className="p-2.5 hover:bg-emerald-50 cursor-pointer rounded-xl flex items-center gap-2.5 transition-colors"
+                  >
+                    <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                      <GraduationCap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-900">{item.full_name}</p>
+                      <p className="text-[10px] font-bold text-slate-500">{item.class_name} • NISN: {item.nisn}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-xs font-bold text-slate-500">
+                  Tidak ada data ditemukan untuk "{globalQuery}".
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Status Indicators & Profile */}

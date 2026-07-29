@@ -23,17 +23,21 @@ const TEACHER_ATTENDANCE_LOG = [
 ];
 
 const STUDENT_ATTENDANCE_SUMMARY = [
-  { class_name: 'Kelas 1 (Abu Bakar)', teacher: 'Ustadzah Rahma', total: 50, hadir: 48, sakit: 1, izin: 1, alfa: 0, pct: 96.0 },
-  { class_name: 'Kelas 2 (Ali)', teacher: 'Ustadz Rizky', total: 50, hadir: 49, sakit: 1, izin: 0, alfa: 0, pct: 98.0 },
-  { class_name: 'Kelas 3 (Thoriq)', teacher: 'Ustadz Farhan', total: 50, hadir: 47, sakit: 2, izin: 1, alfa: 0, pct: 94.0 },
-  { class_name: 'Kelas 4 (Hamzah)', teacher: 'Ustadz Abdullah', total: 50, hadir: 50, sakit: 0, izin: 0, alfa: 0, pct: 100.0 },
-  { class_name: 'Kelas 5 (Mu\'adz)', teacher: 'Ustadzah Khadijah', total: 50, hadir: 46, sakit: 3, izin: 1, alfa: 0, pct: 92.0 },
-  { class_name: 'Kelas 6 (Al-Farisi)', teacher: 'Ustadz Hasan', total: 50, hadir: 48, sakit: 1, izin: 1, alfa: 0, pct: 96.0 },
+  { class_name: 'Kelas 1 (Abu Bakar)', searchKey: 'Kelas 1', teacher: 'Ustadzah Rahma', total: 50, hadir: 48, sakit: 1, izin: 1, alfa: 0, pct: 96.0 },
+  { class_name: 'Kelas 2 (Ali)', searchKey: 'Kelas 2', teacher: 'Ustadz Rizky', total: 50, hadir: 49, sakit: 1, izin: 0, alfa: 0, pct: 98.0 },
+  { class_name: 'Kelas 3 (Thoriq)', searchKey: 'Kelas 3', teacher: 'Ustadz Farhan', total: 50, hadir: 47, sakit: 2, izin: 1, alfa: 0, pct: 94.0 },
+  { class_name: 'Kelas 4 (Hamzah)', searchKey: 'Kelas 4', teacher: 'Ustadz Abdullah', total: 50, hadir: 50, sakit: 0, izin: 0, alfa: 0, pct: 100.0 },
+  { class_name: 'Kelas 5 (Mu\'adz)', searchKey: 'Kelas 5', teacher: 'Ustadzah Khadijah', total: 50, hadir: 46, sakit: 3, izin: 1, alfa: 0, pct: 92.0 },
+  { class_name: 'Kelas 6 (Al-Farisi)', searchKey: 'Kelas 6', teacher: 'Ustadz Hasan', total: 50, hadir: 48, sakit: 1, izin: 1, alfa: 0, pct: 96.0 },
 ];
 
 export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState('siswa');
   const [selectedClassModal, setSelectedClassModal] = useState(null);
+  const [modalStudents, setModalStudents] = useState([]);
+  const [loadingModal, setLoadingModal] = useState(false);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+
   const [userSession, setUserSession] = useState({
     role: 'kepsek',
     name: 'H. Ahmad Dahlan, M.Pd',
@@ -75,7 +79,7 @@ export default function AttendancePage() {
         if (!error && data) {
           const mapped = data.map((st) => ({
             ...st,
-            attendance_status: 'Hadir', // Default 100% Hadir sesuai gambar 1
+            attendance_status: 'Hadir',
           }));
           setTeacherStudents(mapped);
         }
@@ -89,16 +93,58 @@ export default function AttendancePage() {
     fetchClassStudents();
   }, [isTeacher]);
 
+  // Fetch 50 Siswa dari Supabase saat Kepsek Menekan Tombol "Inspeksi" (POIN 1)
+  useEffect(() => {
+    if (!selectedClassModal) return;
+
+    const fetchModalClassStudents = async () => {
+      setLoadingModal(true);
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .ilike('class_name', `%${selectedClassModal.searchKey}%`)
+          .order('full_name', { ascending: true });
+
+        if (!error && data) {
+          const mapped = data.map((st, idx) => ({
+            ...st,
+            attendance_status: idx % 15 === 0 ? 'Sakit' : idx % 22 === 0 ? 'Izin' : 'Hadir',
+          }));
+          setModalStudents(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching modal class students:', err);
+      } finally {
+        setLoadingModal(false);
+      }
+    };
+
+    fetchModalClassStudents();
+  }, [selectedClassModal]);
+
   const toggleStudentStatus = (id, newStatus) => {
     setTeacherStudents((prev) =>
       prev.map((st) => (st.id === id ? { ...st, attendance_status: newStatus } : st))
     );
   };
 
+  const toggleModalStudentStatus = (id, newStatus) => {
+    setModalStudents((prev) =>
+      prev.map((st) => (st.id === id ? { ...st, attendance_status: newStatus } : st))
+    );
+  };
+
   const filteredTeacherStudents = teacherStudents.filter(
     (st) =>
-      st.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      st.nisn.includes(searchQuery)
+      st.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      st.nisn?.includes(searchQuery)
+  );
+
+  const filteredModalStudents = modalStudents.filter(
+    (st) =>
+      st.full_name?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+      st.nisn?.includes(modalSearchQuery)
   );
 
   return (
@@ -237,7 +283,7 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {/* VIEW 1: JIKA GURU -> TAMPILKAN LANGSUNG 50 SISWA KELAS BINAAN */}
+      {/* VIEW GURU: TABEL 50 SISWA LANGSUNG */}
       {activeTab === 'siswa' && isTeacher && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-emerald-100 pb-3">
@@ -330,7 +376,7 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* VIEW 2: JIKA KEPSEK -> TAMPILKAN REKAPITULASI 6 KELAS */}
+      {/* VIEW KEPSEK: REKAPITULASI 6 KELAS */}
       {activeTab === 'siswa' && !isTeacher && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
@@ -374,11 +420,14 @@ export default function AttendancePage() {
                     </td>
                     <td className="p-3 text-center">
                       <button
-                        onClick={() => setSelectedClassModal(row)}
-                        className="px-3 py-1 bg-emerald-700 text-white font-black text-[10px] rounded-lg flex items-center gap-1 mx-auto"
+                        onClick={() => {
+                          setModalSearchQuery('');
+                          setSelectedClassModal(row);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl flex items-center gap-1 mx-auto shadow-sm transition-all"
                       >
                         <span>Inspeksi</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>
@@ -430,38 +479,121 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* MODAL INSPEKSI PRESENSI SISWA PER KELAS (KEPSEK) */}
-      {selectedClassModal && (
+      {/* MODAL INSPEKSI KEPSEK: MENAMPILKAN SELURUH 50 SISWA DARI SUPABASE (POIN 1) */}
+      {selectedClassModal && !isTeacher && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
-            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between shrink-0">
               <h3 className="text-sm font-black flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-amber-300" />
-                <span>Detail Presensi: {selectedClassModal.class_name}</span>
+                <span>Inspeksi Detail Absensi: {selectedClassModal.class_name}</span>
               </h3>
               <button
                 onClick={() => setSelectedClassModal(null)}
-                className="text-white hover:text-amber-200"
+                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 font-bold text-xs">
-              <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center">
-                <p className="text-slate-900">
-                  Wali Kelas:{' '}
-                  <span className="text-emerald-900 font-black">
-                    {selectedClassModal.teacher}
-                  </span>
-                </p>
-                <p className="text-emerald-950 font-black">
-                  Kehadiran: {selectedClassModal.pct}%
-                </p>
+            <div className="p-5 space-y-4 font-bold text-xs overflow-y-auto flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                <div>
+                  <p className="text-slate-900">
+                    Wali Kelas:{' '}
+                    <span className="text-emerald-950 font-black">
+                      {selectedClassModal.teacher}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-slate-600">
+                    Total Terdata: {modalStudents.length} Siswa
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-emerald-950 font-black text-sm">
+                    Kehadiran: {selectedClassModal.pct}%
+                  </p>
+                  <p className="text-[11px] text-emerald-800 font-extrabold">
+                    {selectedClassModal.hadir} Hadir | {selectedClassModal.sakit} Sakit | {selectedClassModal.izin} Izin
+                  </p>
+                </div>
               </div>
 
-              <div className="p-4 bg-emerald-100 text-emerald-900 rounded-xl text-center font-black border border-emerald-300">
-                Masya Allah! Seluruh 50 Murid {selectedClassModal.class_name} Hadir 100% Hari Ini.
+              {/* Search filter in modal */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau NISN siswa di kelas ini..."
+                  value={modalSearchQuery}
+                  onChange={(e) => setModalSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-2 border-emerald-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              {/* Student Attendance List Table */}
+              <div className="border-2 border-emerald-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-emerald-100/90 text-emerald-950 font-black text-xs">
+                      <th className="p-3">No</th>
+                      <th className="p-3">NISN</th>
+                      <th className="p-3">Nama Lengkap Siswa</th>
+                      <th className="p-3">Gender</th>
+                      <th className="p-3 text-center">Status Absensi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
+                    {loadingModal ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-emerald-800">
+                          <div className="flex items-center justify-center gap-2 font-black">
+                            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                            <span>Mengambil Data 50 Siswa dari Database Supabase...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredModalStudents.length > 0 ? (
+                      filteredModalStudents.map((st, idx) => (
+                        <tr key={st.id || idx} className="hover:bg-emerald-50/50 transition-colors">
+                          <td className="p-2.5 text-slate-500 font-mono">{idx + 1}</td>
+                          <td className="p-2.5 text-emerald-900 font-mono font-black">{st.nisn}</td>
+                          <td className="p-2.5 font-black text-slate-900">{st.full_name}</td>
+                          <td className="p-2.5 text-slate-700">{st.gender}</td>
+                          <td className="p-2.5 text-center">
+                            <div className="inline-flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                              {['Hadir', 'Sakit', 'Izin', 'Alfa'].map((status) => (
+                                <button
+                                  key={status}
+                                  onClick={() => toggleModalStudentStatus(st.id, status)}
+                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
+                                    st.attendance_status === status
+                                      ? status === 'Hadir'
+                                        ? 'bg-emerald-700 text-white'
+                                        : status === 'Sakit'
+                                        ? 'bg-amber-600 text-white'
+                                        : status === 'Izin'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-rose-600 text-white'
+                                      : 'text-slate-600 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {status}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
+                          Tidak ada siswa ditemukan dengan kata kunci pencarian tersebut.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
