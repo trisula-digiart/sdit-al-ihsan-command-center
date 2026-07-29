@@ -63,20 +63,29 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const session = {
+      const sessionData = {
         role: role,
         name: role === 'kepsek' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
         title: role === 'kepsek' ? 'Kepala Sekolah' : 'Guru / Wali Kelas 4',
         email: email,
       };
 
+      const sessionString = JSON.stringify(sessionData);
+
+      // 1. Simpan Cookie "user_session_token" agar terbaca oleh src/middleware.js
+      document.cookie = `user_session_token=${encodeURIComponent(
+        sessionString
+      )}; path=/; max-age=${30 * 60}; SameSite=Lax`;
+
+      // 2. Simpan juga ke localStorage sebagai cadangan Client State
       if (typeof window !== 'undefined') {
-        localStorage.setItem('user_session', JSON.stringify(session));
+        localStorage.setItem('user_session', sessionString);
       }
 
+      // 3. Tentukan Target Rute
       const targetPath = role === 'kepsek' ? '/executive' : '/attendance';
 
-      // Pindah rute langsung
+      // 4. Redirect Fisik (Mengirimkan cookie ke middleware secara instan)
       window.location.href = targetPath;
     } catch (error) {
       console.error('Login Execution Error:', error);
@@ -86,7 +95,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 text-slate-100 font-sans">
-      {/* SISI KIRI: VISUAL HERO BANNER ISLAMI (NATIVE CSS GRADIENT - NO CORB BLOCK) */}
+      {/* SISI KIRI: VISUAL HERO BANNER ISLAMI */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12 border-r-2 border-emerald-800/40 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950">
         
         {/* Decorative Radial Background Patterns */}
@@ -222,10 +231,9 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Tombol Login */}
+            {/* Tombol Login Aktivator Cookie */}
             <button
-              type="button"
-              onClick={handleLogin}
+              type="submit"
               disabled={isSubmitting}
               className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-700/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] mt-2 cursor-pointer disabled:opacity-50"
             >
