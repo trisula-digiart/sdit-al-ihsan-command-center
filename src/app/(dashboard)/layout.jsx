@@ -3,11 +3,7 @@ import { HeaderNav } from "@/components/dashboard/HeaderNav";
 import { createServerClient } from "@/lib/supabase/server";
 import AutoLogoutListener from "@/components/shared/AutoLogoutListener";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }) {
   const supabase = await createServerClient();
 
   // Ambil data user yang sedang login via getUser()
@@ -15,8 +11,8 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userRole: "HEAD_AREA" | "MUH" | "UNIT" = "UNIT";
-  let userName = "User Perbankan";
+  let userRole = "UNIT";
+  let userName = "User Sekolah";
   let unitName = "";
 
   if (user) {
@@ -34,11 +30,11 @@ export default async function DashboardLayout({
       .single();
 
     if (profile) {
-      userRole = profile.role as any;
-      userName = profile.full_name;
+      userRole = profile.role;
+      userName = profile.full_name || "User Sekolah";
       if (profile.units) {
-        const u = profile.units as any;
-        unitName = `${u.kcp_name} (${u.sentra_mikro})`;
+        const u = profile.units;
+        unitName = `${u.kcp_name || ''} (${u.sentra_mikro || ''})`;
       }
     }
   }
