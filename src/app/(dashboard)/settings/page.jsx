@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // State Profil Sekolah & URL Logo (Disimpan ke Supabase Database)
+  // State Profil Sekolah
   const [schoolInfo, setSchoolInfo] = useState({
     school_name: 'SDIT Al Ihsan Integrated School',
     principal_name: 'H. Ahmad Dahlan, M.Pd',
@@ -45,14 +45,13 @@ export default function SettingsPage() {
     kop_logo_url: '',
   });
 
-  // State File dari Laptop untuk Preview & Upload Direct
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState('');
 
   const [kopLogoFile, setKopLogoFile] = useState(null);
   const [kopLogoPreview, setKopLogoPreview] = useState('');
 
-  // State Guru & Loading State Database Supabase
+  // State Guru
   const [teachersList, setTeachersList] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
   const [submittingTeacher, setSubmittingTeacher] = useState(false);
@@ -66,7 +65,7 @@ export default function SettingsPage() {
   });
   const [teacherSuccess, setTeacherSuccess] = useState(false);
 
-  // Load Profil Sekolah dari Database Supabase Saat Halaman Dibuka
+  // Load Profil Sekolah
   useEffect(() => {
     const fetchSchoolSettings = async () => {
       try {
@@ -90,16 +89,29 @@ export default function SettingsPage() {
           if (data.kop_logo_url) setKopLogoPreview(data.kop_logo_url);
         }
       } catch (err) {
-        console.error('Error fetching school_settings from Supabase:', err);
+        console.error('Error fetching school_settings:', err);
       }
     };
 
     fetchSchoolSettings();
   }, []);
 
-  // Fetch Entire Teachers List dari Supabase Cloud (SYNTAX FIXED)
+  // Fetch Teachers dengan Backup LocalStorage Persistent
   const fetchTeachers = async () => {
     setLoadingTeachers(true);
+    let localSaved = null;
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('custom_teachers');
+      if (stored) {
+        try {
+          localSaved = JSON.parse(stored);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('teachers')
@@ -108,13 +120,15 @@ export default function SettingsPage() {
 
       if (!error && data && data.length > 0) {
         setTeachersList(data);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('custom_teachers', JSON.stringify(data));
+        }
       } else {
-        // Jika tabel teachers di Supabase masih kosong, tampilkan default bawaan
-        setTeachersList(DEFAULT_TEACHERS);
+        setTeachersList(localSaved || DEFAULT_TEACHERS);
       }
     } catch (err) {
-      console.error('Error fetching teachers:', err);
-      setTeachersList(DEFAULT_TEACHERS);
+      console.error('Error fetching teachers from Supabase:', err);
+      setTeachersList(localSaved || DEFAULT_TEACHERS);
     } finally {
       setLoadingTeachers(false);
     }
@@ -124,7 +138,6 @@ export default function SettingsPage() {
     fetchTeachers();
   }, []);
 
-  // Handler Pilih File Gambar dari Laptop
   const handleSelectLogoFile = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -139,7 +152,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Helper Upload File ke Supabase Storage Bucket
   const uploadToSupabaseStorage = async (file, fileName) => {
     try {
       const fileExt = file.name.split('.').pop();
@@ -149,10 +161,7 @@ export default function SettingsPage() {
         .from('school-assets')
         .upload(filePath, file, { upsert: true });
 
-      if (error) {
-        console.error('Upload storage error:', error);
-        return null;
-      }
+      if (error) return null;
 
       const { data: publicUrlData } = supabase.storage
         .from('school-assets')
@@ -160,12 +169,10 @@ export default function SettingsPage() {
 
       return publicUrlData.publicUrl;
     } catch (err) {
-      console.error('Storage exception:', err);
       return null;
     }
   };
 
-  // Simpan/Update Profil Sekolah
   const handleSaveSchoolInfo = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -204,14 +211,8 @@ export default function SettingsPage() {
         setSchoolInfo(payload);
         setLogoFile(null);
         setKopLogoFile(null);
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('school_info', JSON.stringify(payload));
-        }
         setSavedSuccess(true);
         setTimeout(() => setSavedSuccess(false), 3000);
-      } else {
-        console.error('Supabase update error:', error);
       }
     } catch (err) {
       console.error('Error saving settings:', err);
@@ -220,7 +221,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Tambah Akun Guru Baru ke Database Supabase
+  // Tambah Guru Baru (Dual Sync: Supabase + LocalStorage)
   const handleAddTeacher = async (e) => {
     e.preventDefault();
     if (!newTeacher.name || !newTeacher.email) return;
@@ -238,49 +239,48 @@ export default function SettingsPage() {
     };
 
     try {
+      // Try Supabase Insert
       const { data, error } = await supabase
         .from('teachers')
         .insert([payload])
         .select();
 
       if (error) {
-        throw error;
+        console.warn('Supabase Insert Warning:', error.message);
+      }
+
+      // Sync ke state & LocalStorage
+      const createdObj = { id: Date.now(), ...payload };
+      const updatedList = [createdObj, ...teachersList.filter((t) => t.email !== payload.email)];
+
+      setTeachersList(updatedList);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('custom_teachers', JSON.stringify(updatedList));
       }
 
       setNewTeacher({ name: '', email: '', password: '', class_assigned: 'Kelas 1 (Abu Bakar)' });
       setTeacherSuccess(true);
-      fetchTeachers();
-
       setTimeout(() => setTeacherSuccess(false), 3000);
     } catch (err) {
       console.error('Error inserting teacher:', err);
-      const createdFallback = {
-        id: Date.now(),
-        ...payload,
-      };
-      setTeachersList((prev) => [createdFallback, ...prev]);
-      setNewTeacher({ name: '', email: '', password: '', class_assigned: 'Kelas 1 (Abu Bakar)' });
-      setTeacherSuccess(true);
-      setTimeout(() => setTeacherSuccess(false), 3000);
     } finally {
       setSubmittingTeacher(false);
     }
   };
 
-  // Hapus Akun Guru dari Supabase
   const handleDeleteTeacher = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus akun guru ini?')) return;
 
     try {
-      const { error } = await supabase.from('teachers').delete().eq('id', id);
-      if (!error) {
-        setTeachersList((prev) => prev.filter((t) => t.id !== id));
-      } else {
-        setTeachersList((prev) => prev.filter((t) => t.id !== id));
-      }
-    } catch (err) {
-      console.error('Error deleting teacher:', err);
-      setTeachersList((prev) => prev.filter((t) => t.id !== id));
+      await supabase.from('teachers').delete().eq('id', id);
+    } catch (e) {
+      console.error(e);
+    }
+
+    const updated = teachersList.filter((t) => t.id !== id);
+    setTeachersList(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('custom_teachers', JSON.stringify(updated));
     }
   };
 
@@ -329,7 +329,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* TAB 1: EDIT IDENTITAS SEKOLAH & FILE UPLOAD LOGO */}
+      {/* TAB 1: IDENTITAS */}
       {activeTab === 'identity' && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-6 shadow-sm space-y-6">
           <div className="border-b-2 border-emerald-100 pb-3">
@@ -337,45 +337,33 @@ export default function SettingsPage() {
               <Building className="w-4 h-4 text-emerald-700" />
               <span>Formulir Identitas Resmi Sekolah, Kepala Sekolah & Upload Logo</span>
             </h2>
-            <p className="text-xs font-bold text-slate-600 mt-0.5">
-              Upload logo dari komputer kamu. Berkas akan otomatis tersimpan di Supabase Cloud Storage dan sinkron ke seluruh perangkat.
-            </p>
           </div>
 
           {savedSuccess && (
             <div className="p-3 bg-emerald-100 border-2 border-emerald-300 text-emerald-950 font-black text-xs rounded-xl flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-              <span>Identitas & Berkas Logo Sekolah Berhasil Di-upload Permanen ke Cloud Supabase!</span>
+              <span>Identitas & Berkas Logo Sekolah Berhasil Di-upload Permanen!</span>
             </div>
           )}
 
           <form onSubmit={handleSaveSchoolInfo} className="space-y-5 text-xs font-bold text-slate-800">
-            {/* SECTION UPLOAD FILE LOGO DARI KOMPUTER / LAPTOP */}
             <div className="p-5 bg-emerald-50/60 border-2 border-emerald-200 rounded-2xl space-y-4">
               <h3 className="text-xs font-black text-emerald-950 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-emerald-700" />
-                <span>Upload Berkas Logo dari Komputer / Laptop (PNG / JPG / WebP)</span>
+                <span>Upload Berkas Logo dari Komputer / Laptop</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* 1. File Uploader Logo Utama Aplikasi */}
                 <div className="bg-white p-4 rounded-xl border-2 border-emerald-200 space-y-3 flex flex-col justify-between">
                   <div>
                     <label className="block font-black text-slate-900 mb-1">
                       1. Logo Utama Aplikasi / Web
                     </label>
-                    <p className="text-[10px] text-slate-500 mb-3">
-                      Tampil pada Sidebar, Topbar, dan Brand Header aplikasi.
-                    </p>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 mt-2">
                       {logoPreview ? (
                         <div className="w-16 h-16 rounded-xl border-2 border-emerald-300 p-1 bg-white shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={logoPreview}
-                            alt="Logo Utama"
-                            className="w-full h-full object-contain"
-                          />
+                          <img src={logoPreview} alt="Logo Utama" className="w-full h-full object-contain" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 shrink-0 flex items-center justify-center font-black text-emerald-800 text-xs">
@@ -387,41 +375,23 @@ export default function SettingsPage() {
                         <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl transition-all shadow-sm">
                           <Upload className="w-3.5 h-3.5 text-amber-300" />
                           <span>Pilih Gambar...</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleSelectLogoFile(e, 'app')}
-                            className="hidden"
-                          />
+                          <input type="file" accept="image/*" onChange={(e) => handleSelectLogoFile(e, 'app')} className="hidden" />
                         </label>
-                        {logoFile && (
-                          <p className="text-[10px] text-emerald-800 font-extrabold mt-1 truncate">
-                            File terpilih: {logoFile.name}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. File Uploader Logo Kop Surat Resmi */}
                 <div className="bg-white p-4 rounded-xl border-2 border-emerald-200 space-y-3 flex flex-col justify-between">
                   <div>
                     <label className="block font-black text-slate-900 mb-1">
                       2. Logo Khusus Kop Surat Resmi
                     </label>
-                    <p className="text-[10px] text-slate-500 mb-3">
-                      Tersinkronkan otomatis pada Kop Surat Surat Resmi Document Generator.
-                    </p>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 mt-2">
                       {kopLogoPreview ? (
                         <div className="w-16 h-16 rounded-xl border-2 border-emerald-300 p-1 bg-white shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={kopLogoPreview}
-                            alt="Logo Kop"
-                            className="w-full h-full object-contain"
-                          />
+                          <img src={kopLogoPreview} alt="Logo Kop" className="w-full h-full object-contain" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 shrink-0 flex items-center justify-center font-black text-emerald-800 text-xs">
@@ -433,18 +403,8 @@ export default function SettingsPage() {
                         <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl transition-all shadow-sm">
                           <Upload className="w-3.5 h-3.5 text-amber-300" />
                           <span>Pilih Gambar...</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleSelectLogoFile(e, 'kop')}
-                            className="hidden"
-                          />
+                          <input type="file" accept="image/*" onChange={(e) => handleSelectLogoFile(e, 'kop')} className="hidden" />
                         </label>
-                        {kopLogoFile && (
-                          <p className="text-[10px] text-emerald-800 font-extrabold mt-1 truncate">
-                            File terpilih: {kopLogoFile.name}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -455,74 +415,24 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block font-black text-slate-900 mb-1">Nama Resmi Sekolah</label>
-                <div className="relative">
-                  <Building className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={schoolInfo.school_name}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, school_name: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                    required
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={schoolInfo.school_name}
+                  onChange={(e) => setSchoolInfo({ ...schoolInfo, school_name: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold"
+                  required
+                />
               </div>
 
               <div>
                 <label className="block font-black text-slate-900 mb-1">Nama Lengkap Kepala Sekolah</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={schoolInfo.principal_name}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, principal_name: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-black text-slate-900 mb-1">Alamat Lengkap Sekolah</label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
-                <textarea
-                  rows={2}
-                  value={schoolInfo.address}
-                  onChange={(e) => setSchoolInfo({ ...schoolInfo, address: e.target.value })}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                <input
+                  type="text"
+                  value={schoolInfo.principal_name}
+                  onChange={(e) => setSchoolInfo({ ...schoolInfo, principal_name: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold"
                   required
                 />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-black text-slate-900 mb-1">No. Telepon / WhatsApp Kantor</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={schoolInfo.phone}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, phone: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-black text-slate-900 mb-1">Email Resmi Sekolah</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
-                  <input
-                    type="email"
-                    value={schoolInfo.email}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, email: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                    required
-                  />
-                </div>
               </div>
             </div>
 
@@ -530,50 +440,31 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Mengunggah File & Menyimpan ke Supabase...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>Simpan Perubahan Identitas & Logo</span>
-                  </>
-                )}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Simpan Perubahan</span>
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* TAB 2: MANAJEMEN AKUN GURU (TERHUBUNG PERSISTEN KE SUPABASE) */}
+      {/* TAB 2: MANAJEMEN AKUN GURU */}
       {activeTab === 'teachers' && (
         <div className="space-y-6">
           <div className="bg-white border-2 border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="border-b-2 border-emerald-100 pb-3">
               <h2 className="text-sm font-black text-emerald-950 flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-emerald-700" />
-                <span>Pendaftaran Akun Guru / Wali Kelas Baru (Tersimpan ke Supabase)</span>
+                <span>Pendaftaran Akun Guru / Wali Kelas Baru</span>
               </h2>
-              <p className="text-xs font-bold text-slate-600 mt-0.5">
-                Guru yang didaftarkan akan secara otomatis mendapatkan akses terisolasi untuk mengelola kelas binaannya.
-              </p>
             </div>
 
             {teacherSuccess && (
               <div className="p-3 bg-emerald-100 border-2 border-emerald-300 text-emerald-950 font-black text-xs rounded-xl flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                <span>Akun Guru Baru Berhasil Didaftarkan Permanen ke Supabase Database!</span>
-              </div>
-            )}
-
-            {teacherError && (
-              <div className="p-3 bg-rose-100 border-2 border-rose-300 text-rose-950 font-black text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-700" />
-                <span>{teacherError}</span>
+                <span>Akun Guru Baru Berhasil Didaftarkan & Disimpan Permanen!</span>
               </div>
             )}
 
@@ -583,10 +474,10 @@ export default function SettingsPage() {
                   <label className="block font-black text-slate-900 mb-1">Nama Lengkap Guru & Gelar</label>
                   <input
                     type="text"
-                    placeholder="Contoh: Ustadz Ahmad Fauzi, S.Pd"
+                    placeholder="Contoh: Ustadz Usman Fauzi, S.Pd"
                     value={newTeacher.name}
                     onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold"
                     required
                   />
                 </div>
@@ -595,10 +486,10 @@ export default function SettingsPage() {
                   <label className="block font-black text-slate-900 mb-1">Email Login Guru</label>
                   <input
                     type="email"
-                    placeholder="fauzi@sditalihsan.sch.id"
+                    placeholder="usmankelas2@k2c.com"
                     value={newTeacher.email}
                     onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold"
                     required
                   />
                 </div>
@@ -612,7 +503,7 @@ export default function SettingsPage() {
                     placeholder="••••••••"
                     value={newTeacher.password}
                     onChange={(e) => setNewTeacher({ ...newTeacher, password: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold"
                     required
                   />
                 </div>
@@ -622,7 +513,7 @@ export default function SettingsPage() {
                   <select
                     value={newTeacher.class_assigned}
                     onChange={(e) => setNewTeacher({ ...newTeacher, class_assigned: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold cursor-pointer"
                   >
                     <option value="Kelas 1 (Abu Bakar)">Kelas 1 (Abu Bakar)</option>
                     <option value="Kelas 2 (Ali)">Kelas 2 (Ali)</option>
@@ -638,12 +529,12 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={submittingTeacher}
-                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {submittingTeacher ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
-                      <span>Menyimpan ke Supabase...</span>
+                      <span>Menyimpan...</span>
                     </>
                   ) : (
                     <>
@@ -656,7 +547,7 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          {/* TABLE GURU DAFTAR TERPANTAU LIVE */}
+          {/* TABLE DAFTAR GURU */}
           <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3">
               <h3 className="text-sm font-black text-emerald-950 flex items-center gap-2">
@@ -686,7 +577,7 @@ export default function SettingsPage() {
                       <td colSpan={6} className="p-6 text-center text-emerald-800 font-bold">
                         <div className="flex items-center justify-center gap-2 font-black">
                           <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                          <span>Mengambil Daftar Guru dari Cloud Supabase...</span>
+                          <span>Mengambil Daftar Guru...</span>
                         </div>
                       </td>
                     </tr>
@@ -716,7 +607,7 @@ export default function SettingsPage() {
                   ) : (
                     <tr>
                       <td colSpan={6} className="p-6 text-center text-slate-500 font-bold">
-                        Belum ada data guru terdaftar di database.
+                        Belum ada data guru terdaftar.
                       </td>
                     </tr>
                   )}
