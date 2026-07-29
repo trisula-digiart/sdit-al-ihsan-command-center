@@ -76,16 +76,8 @@ export default function LoginPage() {
 
       const targetPath = role === 'kepsek' ? '/executive' : '/attendance';
 
-      // Eksekusi Navigasi
-      router.push(targetPath);
-
-      // Fallback Navigasi Fisik untuk Menjamin 100% Pindah Halaman
-      setTimeout(() => {
-        if (typeof window !== 'undefined') {
-          window.location.href = targetPath;
-        }
-      }, 100);
-
+      // Pindah rute langsung
+      window.location.href = targetPath;
     } catch (error) {
       console.error('Login Execution Error:', error);
       setIsSubmitting(false);
@@ -94,19 +86,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 text-slate-100 font-sans">
-      {/* SISI KIRI: VISUAL HERO BANNER ISLAMI HIGH-RESOLUTION */}
-      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12 border-r-2 border-emerald-800/40">
-        {/* Full Image Background Arsitektur Islami Megah */}
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-10000 hover:scale-100 opacity-25 mix-blend-overlay"
-          style={{
-            backgroundImage:
-              'url("https://images.unsplash.com/photo-1542816417-0983cbe82752?q=80&w=2070&auto=format&fit=crop")',
-          }}
-        />
-
-        {/* Gradient Overlay Transparan Emerald */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/90 via-emerald-900/70 to-emerald-950/80 z-10" />
+      {/* SISI KIRI: VISUAL HERO BANNER ISLAMI (NATIVE CSS GRADIENT - NO CORB BLOCK) */}
+      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12 border-r-2 border-emerald-800/40 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950">
+        
+        {/* Decorative Radial Background Patterns */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top Header Branding (Dynamic Supabase) */}
         <div className="relative z-20 flex items-center gap-3">
@@ -172,7 +157,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* SISI KANAN: FORM LOGIN CARD ENTERPRISE DENGAN UNIFIED GREEN GRADIENT */}
+      {/* SISI KANAN: FORM LOGIN CARD ENTERPRISE */}
       <div className="w-full lg:w-2/5 flex flex-col items-center justify-between p-6 md:p-12 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 relative">
         <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border-2 border-emerald-200 text-slate-900 space-y-6 my-auto relative z-10">
           
@@ -237,7 +222,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Tombol Login Aktivasi Direct Click Handler */}
+            {/* Tombol Login */}
             <button
               type="button"
               onClick={handleLogin}
