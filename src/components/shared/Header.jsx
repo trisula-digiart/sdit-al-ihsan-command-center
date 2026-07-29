@@ -35,6 +35,13 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [timeString, setTimeString] = useState('');
 
+  // Dynamic Session State (Membaca dari Login)
+  const [userSession, setUserSession] = useState({
+    name: currentRole === 'Kepala Sekolah' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
+    title: currentRole,
+    role: currentRole === 'Kepala Sekolah' ? 'kepsek' : 'guru',
+  });
+
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -48,7 +55,22 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
       );
     };
     updateClock();
-  }, []);
+
+    // Membaca session login jika tersedia
+    if (typeof window !== 'undefined') {
+      const storedSession = localStorage.getItem('user_session');
+      if (storedSession) {
+        try {
+          const parsed = JSON.parse(storedSession);
+          if (parsed && parsed.name) {
+            setUserSession(parsed);
+          }
+        } catch (err) {
+          console.error('Failed to parse user session:', err);
+        }
+      }
+    }
+  }, [currentRole]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -65,6 +87,16 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
   const handleClearNotification = (e, id) => {
     e.stopPropagation();
     setNotifications((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const getInitials = (name) => {
+    if (!name) return 'KS';
+    const cleanName = name.replace(/^(H\.|Hj\.|Dr\.|Ustadz|Ustadzah)\s+/i, '');
+    const parts = cleanName.trim().split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return cleanName.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -205,16 +237,18 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
           )}
         </div>
 
-        {/* Profile Badge */}
+        {/* Dynamic Profile Badge */}
         <div className="flex items-center gap-2 pl-2 border-l-2 border-emerald-200">
           <div className="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shadow-md ring-2 ring-emerald-300">
-            {currentRole === 'Kepala Sekolah' ? 'KS' : currentRole === 'Guru / Wali Kelas' ? 'GR' : 'ST'}
+            {getInitials(userSession.name)}
           </div>
           <div className="hidden lg:block text-left">
             <p className="text-xs font-black text-emerald-950 leading-none">
-              {currentRole === 'Kepala Sekolah' ? 'H. Ahmad Dahlan, M.Pd' : currentRole === 'Guru / Wali Kelas' ? 'Ustadz Abdullah' : 'Staf Sarpras'}
+              {userSession.name}
             </p>
-            <p className="text-[10px] text-emerald-800 font-extrabold mt-0.5">{currentRole}</p>
+            <p className="text-[10px] text-emerald-800 font-extrabold mt-0.5">
+              {userSession.title}
+            </p>
           </div>
         </div>
       </div>

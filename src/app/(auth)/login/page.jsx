@@ -2,84 +2,111 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, ShieldAlert, School } from 'lucide-react';
+import { Building2, Mail, Lock, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Kepala Sekolah');
-  const [isLoading, setIsLoading] = useState(false);
+  const [role, setRole] = useState('guru'); // 'kepsek' atau 'guru'
+  const [email, setEmail] = useState('guru@sditalihsan.sch.id');
+  const [password, setPassword] = useState('123456');
+  const [loading, setLoading] = useState(false);
+
+  const handleRoleChange = (e) => {
+    const selectedRole = e.target.value;
+    setRole(selectedRole);
+    if (selectedRole === 'kepsek') {
+      setEmail('kepsek@sditalihsan.sch.id');
+    } else {
+      setEmail('guru@sditalihsan.sch.id');
+    }
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
-    // Simulasi otentikasi login dan redirect ke Executive Dashboard
+    // Simpan session simulasi ke localStorage
+    const userSession = {
+      role: role,
+      name: role === 'kepsek' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
+      title: role === 'kepsek' ? 'Kepala Sekolah' : 'Wali Kelas 4 (Hamzah)',
+      email: email,
+    };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user_session', JSON.stringify(userSession));
+    }
+
     setTimeout(() => {
-      setIsLoading(false);
-      router.push('/executive');
-    }, 800);
+      setLoading(false);
+      // ROLE-BASED REDIRECT STRICT LOGIC
+      if (role === 'kepsek') {
+        router.push('/executive');
+      } else {
+        router.push('/students'); // Guru langsung diarahkan ke Data Siswa Kelas Binaan
+      }
+    }, 600);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4 relative overflow-hidden">
-      {/* Background Glow Overlay */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-600/20 rounded-full blur-3xl pointer-events-none"></div>
-
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-10">
-        {/* Header Section */}
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-8 text-white text-center relative">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-3 border border-white/20 shadow-inner">
-            <School className="w-8 h-8 text-emerald-200" />
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 antialiased font-sans">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
+        {/* Header Branding */}
+        <div className="bg-emerald-800 p-8 text-center text-white relative">
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <Building2 className="w-8 h-8 text-amber-300" />
           </div>
-          <h1 className="text-xl font-bold tracking-wide">SDIT AL IHSAN</h1>
-          <p className="text-xs text-emerald-100 mt-1 font-medium">
+          <h1 className="text-xl font-black tracking-wide">SDIT AL IHSAN</h1>
+          <p className="text-xs font-bold text-emerald-200 mt-1">
             Integrated Command Center Portal
           </p>
         </div>
 
-        {/* Form Section */}
-        <form onSubmit={handleLogin} className="p-8 space-y-5">
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700">Pilih Peran Access</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="Kepala Sekolah">Kepala Sekolah (Full Access)</option>
-              <option value="Guru / Wali Kelas">Guru / Wali Kelas (Akademik & Chat)</option>
-              <option value="Staf Sarpras">Staf Sarpras (Operasional & Maintenance)</option>
-            </select>
+        {/* Form Login */}
+        <form onSubmit={handleLogin} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-black text-slate-800 mb-1.5">
+              Pilih Peran Access
+            </label>
+            <div className="relative">
+              <select
+                value={role}
+                onChange={handleRoleChange}
+                className="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all"
+              >
+                <option value="guru">Guru / Wali Kelas (Akademik & Chat)</option>
+                <option value="kepsek">Kepala Sekolah (Master View & Executive)</option>
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700">Email Akun</label>
+          <div>
+            <label className="block text-xs font-black text-slate-800 mb-1.5">
+              Email Akun
+            </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@sditalihsan.sch.id"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700">Kata Sandi</label>
+          <div>
+            <label className="block text-xs font-black text-slate-800 mb-1.5">
+              Kata Sandi
+            </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all"
                 required
               />
             </div>
@@ -87,22 +114,24 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 group"
+            disabled={loading}
+            className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all mt-2"
           >
-            {isLoading ? (
-              <span>Memproses Masuk...</span>
+            {loading ? (
+              <span>Memproses Hak Akses...</span>
             ) : (
               <>
                 <span>Masuk Sistem Command Center</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
 
-          <div className="pt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
-            <ShieldAlert className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Sistem Terenkripsi & Terintegrasi Supabase</span>
+          <div className="pt-2 text-center border-t border-slate-100">
+            <p className="text-[11px] font-extrabold text-emerald-800 flex items-center justify-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Sistem Terenkripsi & Terintegrasi Supabase</span>
+            </p>
           </div>
         </form>
       </div>
