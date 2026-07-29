@@ -15,6 +15,7 @@ import {
   Compass,
   CalendarCheck2,
   Wallet,
+  Settings,
 } from 'lucide-react';
 
 const NAVIGATION_ITEMS = [
@@ -57,6 +58,11 @@ const NAVIGATION_ITEMS = [
     name: 'Event Calendar',
     href: '/calendar',
     icon: Calendar,
+  },
+  {
+    name: 'Pengaturan Sekolah',
+    href: '/settings',
+    icon: Settings,
   },
 ];
 
