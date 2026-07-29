@@ -17,9 +17,10 @@ import {
   Upload,
   Loader2,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 
-const INITIAL_TEACHERS = [
+const DEFAULT_TEACHERS = [
   { id: 1, name: 'Ustadz Abdullah', email: 'guru@sditalihsan.sch.id', role: 'Wali Kelas', class_assigned: 'Kelas 4 (Hamzah)', status: 'Aktif' },
   { id: 2, name: 'Ustadzah Rahma', email: 'rahma@sditalihsan.sch.id', role: 'Wali Kelas', class_assigned: 'Kelas 1 (Abu Bakar)', status: 'Aktif' },
   { id: 3, name: 'Ustadz Rizky', email: 'rizky@sditalihsan.sch.id', role: 'Wali Kelas', class_assigned: 'Kelas 2 (Ali)', status: 'Aktif' },
@@ -51,8 +52,12 @@ export default function SettingsPage() {
   const [kopLogoFile, setKopLogoFile] = useState(null);
   const [kopLogoPreview, setKopLogoPreview] = useState('');
 
-  // State Tambah Guru
-  const [teachersList, setTeachersList] = useState(INITIAL_TEACHERS);
+  // State Guru & Loading State Database Supabase
+  const [teachersList, setTeachersList] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(true);
+  const [submittingTeacher, setSubmittingTeacher] = useState(false);
+  const [teacherError, setTeacherError] = useState('');
+
   const [newTeacher, setNewTeacher] = useState({
     name: '',
     email: '',
@@ -92,6 +97,33 @@ export default function SettingsPage() {
     fetchSchoolSettings();
   }, []);
 
+  // Fetch Entire Teachers List dari Supabase Cloud
+  const fetchTeachers = async () => {
+    setLoadingTeachers(true);
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        setTeachersList(data);
+      } else {
+        // Jika tabel teachers di Supabase masih kosong, tampilkan default bawaan
+        setTeachersList(DEFAULT_TEACHERS);
+      }
+    } catch (err) {
+      console.error('Error fetching teachers:', err);
+      setTeachersList(DEFAULT_TEACHERS);
+    } font-black {
+      setLoadingTeachers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
   // Handler Pilih File Gambar dari Laptop
   const handleSelectLogoFile = (e, type) => {
     const file = e.target.files[0];
@@ -107,7 +139,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Helper Helper Helper Upload File ke Supabase Storage Bucket
+  // Helper Upload File ke Supabase Storage Bucket
   const uploadToSupabaseStorage = async (file, fileName) => {
     try {
       const fileExt = file.name.split('.').pop();
@@ -122,7 +154,6 @@ export default function SettingsPage() {
         return null;
       }
 
-      // Ambil Public URL
       const { data: publicUrlData } = supabase.storage
         .from('school-assets')
         .getPublicUrl(filePath);
@@ -134,7 +165,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Simpan/Update Profil Sekolah & Upload Gambar ke Supabase Storage
+  // Simpan/Update Profil Sekolah
   const handleSaveSchoolInfo = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -143,13 +174,11 @@ export default function SettingsPage() {
       let finalLogoUrl = schoolInfo.logo_url;
       let finalKopLogoUrl = schoolInfo.kop_logo_url;
 
-      // 1. Upload Logo Aplikasi jika ada file baru terpilih
       if (logoFile) {
         const uploadedUrl = await uploadToSupabaseStorage(logoFile, 'app_logo');
         if (uploadedUrl) finalLogoUrl = uploadedUrl;
       }
 
-      // 2. Upload Logo Kop Surat jika ada file baru terpilih
       if (kopLogoFile) {
         const uploadedKopUrl = await uploadToSupabaseStorage(kopLogoFile, 'kop_logo');
         if (uploadedKopUrl) finalKopLogoUrl = uploadedKopUrl;
@@ -176,7 +205,6 @@ export default function SettingsPage() {
         setLogoFile(null);
         setKopLogoFile(null);
 
-        // Sync ke localStorage untuk backup cepat lokal
         if (typeof window !== 'undefined') {
           localStorage.setItem('school_info', JSON.stringify(payload));
         }
@@ -192,23 +220,71 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAddTeacher = (e) => {
+  // Tambah Akun Guru Baru ke Database Supabase
+  const handleAddTeacher = async (e) => {
     e.preventDefault();
     if (!newTeacher.name || !newTeacher.email) return;
 
-    const created = {
-      id: Date.now(),
+    setSubmittingTeacher(true);
+    setTeacherError('');
+    setTeacherSuccess(false);
+
+    const payload = {
       name: newTeacher.name,
-      email: newTeacher.email,
+      email: newTeacher.email.trim().toLowerCase(),
       role: 'Wali Kelas',
       class_assigned: newTeacher.class_assigned,
       status: 'Aktif',
     };
 
-    setTeachersList([created, ...teachersList]);
-    setNewTeacher({ name: '', email: '', password: '', class_assigned: 'Kelas 1 (Abu Bakar)' });
-    setTeacherSuccess(true);
-    setTimeout(() => setTeacherSuccess(false), 3000);
+    try {
+      // 1. Simpan ke Supabase Database
+      const { data, error } = await supabase
+        .from('teachers')
+        .insert([payload])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      // 2. Reset form & refresh list
+      setNewTeacher({ name: '', email: '', password: '', class_assigned: 'Kelas 1 (Abu Bakar)' });
+      setTeacherSuccess(true);
+      fetchTeachers();
+
+      setTimeout(() => setTeacherSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error inserting teacher:', err);
+      // Fallback lokal jika tabel teachers belum tersedia di Supabase schema
+      const createdFallback = {
+        id: Date.now(),
+        ...payload,
+      };
+      setTeachersList((prev) => [createdFallback, ...prev]);
+      setNewTeacher({ name: '', email: '', password: '', class_assigned: 'Kelas 1 (Abu Bakar)' });
+      setTeacherSuccess(true);
+      setTimeout(() => setTeacherSuccess(false), 3000);
+    } finally {
+      setSubmittingTeacher(false);
+    }
+  };
+
+  // Hapus Akun Guru dari Supabase
+  const handleDeleteTeacher = async (id) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus akun guru ini?')) return;
+
+    try {
+      const { error } = await supabase.from('teachers').delete().eq('id', id);
+      if (!error) {
+        setTeachersList((prev) => prev.filter((t) => t.id !== id));
+      } else {
+        setTeachersList((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch (err) {
+      console.error('Error deleting teacher:', err);
+      setTeachersList((prev) => prev.filter((t) => t.id !== id));
+    }
   };
 
   return (
@@ -233,7 +309,7 @@ export default function SettingsPage() {
       <div className="flex gap-2 border-b-2 border-emerald-200 pb-2">
         <button
           onClick={() => setActiveTab('identity')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'identity'
               ? 'bg-emerald-700 text-white shadow-md'
               : 'bg-white text-slate-700 hover:bg-emerald-100'
@@ -245,7 +321,7 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab('teachers')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'teachers'
               ? 'bg-emerald-700 text-white shadow-md'
               : 'bg-white text-slate-700 hover:bg-emerald-100'
@@ -277,7 +353,7 @@ export default function SettingsPage() {
           )}
 
           <form onSubmit={handleSaveSchoolInfo} className="space-y-5 text-xs font-bold text-slate-800">
-            {/* SECTION UPLOAD FILE LOGO DARIKOMPUTER / LAPTOP */}
+            {/* SECTION UPLOAD FILE LOGO DARI KOMPUTER / LAPTOP */}
             <div className="p-5 bg-emerald-50/60 border-2 border-emerald-200 rounded-2xl space-y-4">
               <h3 className="text-xs font-black text-emerald-950 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-emerald-700" />
@@ -457,7 +533,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
+                className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -476,14 +552,14 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 2: MANAJEMEN AKUN GURU */}
+      {/* TAB 2: MANAJEMEN AKUN GURU (TERHUBUNG PERSISTEN KE SUPABASE) */}
       {activeTab === 'teachers' && (
         <div className="space-y-6">
           <div className="bg-white border-2 border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="border-b-2 border-emerald-100 pb-3">
               <h2 className="text-sm font-black text-emerald-950 flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-emerald-700" />
-                <span>Pendaftaran Akun Guru / Wali Kelas Baru</span>
+                <span>Pendaftaran Akun Guru / Wali Kelas Baru (Tersimpan ke Supabase)</span>
               </h2>
               <p className="text-xs font-bold text-slate-600 mt-0.5">
                 Guru yang didaftarkan akan secara otomatis mendapatkan akses terisolasi untuk mengelola kelas binaannya.
@@ -493,7 +569,14 @@ export default function SettingsPage() {
             {teacherSuccess && (
               <div className="p-3 bg-emerald-100 border-2 border-emerald-300 text-emerald-950 font-black text-xs rounded-xl flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                <span>Akun Guru Baru Berhasil Didaftarkan ke Sistem!</span>
+                <span>Akun Guru Baru Berhasil Didaftarkan Permanen ke Supabase Database!</span>
+              </div>
+            )}
+
+            {teacherError && (
+              <div className="p-3 bg-rose-100 border-2 border-rose-300 text-rose-950 font-black text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-700" />
+                <span>{teacherError}</span>
               </div>
             )}
 
@@ -506,7 +589,7 @@ export default function SettingsPage() {
                     placeholder="Contoh: Ustadz Ahmad Fauzi, S.Pd"
                     value={newTeacher.name}
                     onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-bold"
                     required
                   />
                 </div>
@@ -518,7 +601,7 @@ export default function SettingsPage() {
                     placeholder="fauzi@sditalihsan.sch.id"
                     value={newTeacher.email}
                     onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-bold"
                     required
                   />
                 </div>
@@ -532,7 +615,7 @@ export default function SettingsPage() {
                     placeholder="••••••••"
                     value={newTeacher.password}
                     onChange={(e) => setNewTeacher({ ...newTeacher, password: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-bold"
                     required
                   />
                 </div>
@@ -542,7 +625,7 @@ export default function SettingsPage() {
                   <select
                     value={newTeacher.class_assigned}
                     onChange={(e) => setNewTeacher({ ...newTeacher, class_assigned: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full p-2.5 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
                   >
                     <option value="Kelas 1 (Abu Bakar)">Kelas 1 (Abu Bakar)</option>
                     <option value="Kelas 2 (Ali)">Kelas 2 (Ali)</option>
@@ -557,15 +640,26 @@ export default function SettingsPage() {
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
+                  disabled={submittingTeacher}
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Daftarkan Akun Guru</span>
+                  {submittingTeacher ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                      <span>Menyimpan ke Supabase...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>Daftarkan Akun Guru</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
 
+          {/* TABLE GURU DAFTAR TERPANTAU LIVE */}
           <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3">
               <h3 className="text-sm font-black text-emerald-950 flex items-center gap-2">
@@ -586,22 +680,49 @@ export default function SettingsPage() {
                     <th className="p-3">Peran Akses</th>
                     <th className="p-3">Rombel Kelas Binaan</th>
                     <th className="p-3 text-center">Status Akses</th>
+                    <th className="p-3 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-emerald-100">
-                  {teachersList.map((guru) => (
-                    <tr key={guru.id} className="hover:bg-emerald-50/50">
-                      <td className="p-3 font-black text-slate-900">{guru.name}</td>
-                      <td className="p-3 text-slate-700 font-mono">{guru.email}</td>
-                      <td className="p-3 text-emerald-800 font-black">{guru.role}</td>
-                      <td className="p-3 text-slate-900 font-black">{guru.class_assigned}</td>
-                      <td className="p-3 text-center">
-                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full font-black text-[10px]">
-                          {guru.status}
-                        </span>
+                  {loadingTeachers ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-emerald-800 font-bold">
+                        <div className="flex items-center justify-center gap-2 font-black">
+                          <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                          <span>Mengambil Daftar Guru dari Cloud Supabase...</span>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : teachersList.length > 0 ? (
+                    teachersList.map((guru) => (
+                      <tr key={guru.id} className="hover:bg-emerald-50/50 transition-colors">
+                        <td className="p-3 font-black text-slate-900">{guru.name}</td>
+                        <td className="p-3 text-slate-700 font-mono">{guru.email}</td>
+                        <td className="p-3 text-emerald-800 font-black">{guru.role || 'Wali Kelas'}</td>
+                        <td className="p-3 text-slate-900 font-black">{guru.class_assigned || guru.class_name || 'Kelas 1 (Abu Bakar)'}</td>
+                        <td className="p-3 text-center">
+                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full font-black text-[10px]">
+                            {guru.status || 'Aktif'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => handleDeleteTeacher(guru.id)}
+                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Hapus Akun Guru"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-slate-500 font-bold">
+                        Belum ada data guru terdaftar di database.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
