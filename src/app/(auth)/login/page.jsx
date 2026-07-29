@@ -58,9 +58,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+  const handleLogin = (e) => {
+    if (e) e.preventDefault();
     setIsSubmitting(true);
 
     try {
@@ -75,17 +74,20 @@ export default function LoginPage() {
         localStorage.setItem('user_session', JSON.stringify(session));
       }
 
-      // Navigasi Rute Berdasarkan Peran User
-      if (role === 'kepsek') {
-        await router.push('/executive');
-      } else {
-        await router.push('/attendance');
-      }
-      
-      router.refresh();
+      const targetPath = role === 'kepsek' ? '/executive' : '/attendance';
+
+      // Eksekusi Navigasi
+      router.push(targetPath);
+
+      // Fallback Navigasi Fisik untuk Menjamin 100% Pindah Halaman
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.location.href = targetPath;
+        }
+      }, 100);
+
     } catch (error) {
-      console.error('Error during login navigation:', error);
-    } finally {
+      console.error('Login Execution Error:', error);
       setIsSubmitting(false);
     }
   };
@@ -235,12 +237,14 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Tombol Login Aktivasi Direct Click Handler */}
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogin}
               disabled={isSubmitting}
-              className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-700/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] mt-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-700/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] mt-2 cursor-pointer disabled:opacity-50"
             >
-              <span>{isSubmitting ? 'Memproses...' : 'Masuk Sistem Command Center'}</span>
+              <span>{isSubmitting ? 'Memproses Masuk...' : 'Masuk Sistem Command Center'}</span>
               <ArrowRight className="w-4 h-4 text-amber-300" />
             </button>
 
