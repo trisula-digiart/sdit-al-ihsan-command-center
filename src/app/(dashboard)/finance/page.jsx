@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import {
   Wallet,
   GraduationCap,
@@ -10,22 +11,65 @@ import {
   Building,
   CheckCircle2,
   AlertCircle,
+  Search,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
 const SPP_BY_CLASS = [
-  { class_name: 'Kelas 1 (Abu Bakar)', teacher: 'Ustadzah Rahma', target: 25000000, collected: 23500000, pct: 94, total_students: 50, paid_students: 47 },
-  { class_name: 'Kelas 2 (Ali)', teacher: 'Ustadz Rizky', target: 25000000, collected: 22000000, pct: 88, total_students: 50, paid_students: 44 },
-  { class_name: 'Kelas 3 (Thoriq)', teacher: 'Ustadz Farhan', target: 25000000, collected: 21500000, pct: 86, total_students: 50, paid_students: 43 },
-  { class_name: 'Kelas 4 (Hamzah)', teacher: 'Ustadz Abdullah', target: 25000000, collected: 24000000, pct: 96, total_students: 50, paid_students: 48 },
-  { class_name: 'Kelas 5 (Mu\'adz)', teacher: 'Ustadzah Khadijah', target: 25000000, collected: 21000000, pct: 84, total_students: 50, paid_students: 42 },
-  { class_name: 'Kelas 6 (Al-Farisi)', teacher: 'Ustadz Hasan', target: 25000000, collected: 22500000, pct: 90, total_students: 50, paid_students: 45 },
+  { class_name: 'Kelas 1 (Abu Bakar)', searchKey: 'Kelas 1', teacher: 'Ustadzah Rahma', target: 25000000, collected: 23500000, pct: 94, total_students: 50, paid_students: 47 },
+  { class_name: 'Kelas 2 (Ali)', searchKey: 'Kelas 2', teacher: 'Ustadz Rizky', target: 25000000, collected: 22000000, pct: 88, total_students: 50, paid_students: 44 },
+  { class_name: 'Kelas 3 (Thoriq)', searchKey: 'Kelas 3', teacher: 'Ustadz Farhan', target: 25000000, collected: 21500000, pct: 86, total_students: 50, paid_students: 43 },
+  { class_name: 'Kelas 4 (Hamzah)', searchKey: 'Kelas 4', teacher: 'Ustadz Abdullah', target: 25000000, collected: 24000000, pct: 96, total_students: 50, paid_students: 48 },
+  { class_name: 'Kelas 5 (Mu\'adz)', searchKey: 'Kelas 5', teacher: 'Ustadzah Khadijah', target: 25000000, collected: 21000000, pct: 84, total_students: 50, paid_students: 42 },
+  { class_name: 'Kelas 6 (Al-Farisi)', searchKey: 'Kelas 6', teacher: 'Ustadz Hasan', target: 25000000, collected: 22500000, pct: 90, total_students: 50, paid_students: 45 },
 ];
 
 export default function FinanceSPPPage() {
   const [selectedClassDetail, setSelectedClassDetail] = useState(null);
+  const [modalStudents, setModalStudents] = useState([]);
+  const [loadingModal, setLoadingModal] = useState(false);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+
+  // Fetch seluruh siswa kelas tersebut saat modal dibuka
+  useEffect(() => {
+    if (!selectedClassDetail) return;
+
+    const fetchClassStudents = async () => {
+      setLoadingModal(true);
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .ilike('class_name', `%${selectedClassDetail.searchKey}%`)
+          .order('full_name', { ascending: true });
+
+        if (!error && data) {
+          // Buat simulasi status lunas dinamis berdasarkan urutan data
+          const mappedData = data.map((st, idx) => ({
+            ...st,
+            spp_status: idx % 10 === 0 || idx % 12 === 0 ? 'Belum Lunas' : 'Lunas',
+            spp_amount: 500000,
+          }));
+          setModalStudents(mappedData);
+        }
+      } catch (err) {
+        console.error('Error fetching modal students:', err);
+      } finally {
+        setLoadingModal(false);
+      }
+    };
+
+    fetchClassStudents();
+  }, [selectedClassDetail]);
+
+  const filteredModalStudents = modalStudents.filter((st) =>
+    st.full_name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+    st.nisn.includes(modalSearchQuery)
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       {/* Header */}
       <div className="bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -37,7 +81,7 @@ export default function FinanceSPPPage() {
             Monitoring pembayaran SPP bulanan terintegrasi dari masing-masing Wali Kelas SDIT Al Ihsan.
           </p>
         </div>
-        <div className="px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-xl text-amber-900 font-black text-xs">
+        <div className="px-3.5 py-2 bg-amber-100 border-2 border-amber-300 rounded-xl text-amber-950 font-black text-xs shadow-sm">
           Target Juli 2026: Rp 150.000.000
         </div>
       </div>
@@ -61,11 +105,11 @@ export default function FinanceSPPPage() {
         </div>
       </div>
 
-      {/* Tabel Rekapitulasi per Kelas (Drill Down) */}
+      {/* Tabel Rekapitulasi per Kelas */}
       <div className="bg-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3">
           <h2 className="text-sm font-black text-emerald-950">
-            Capaian Pembayaran SPP Per Rombel Kelas (Klik Baris Untuk Detail Siswa)
+            Capaian Pembayaran SPP Per Rombel Kelas (Klik Tombol Untuk Detail Seluruh Siswa)
           </h2>
           <span className="text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-full">
             6 Kelas Terdata
@@ -89,7 +133,10 @@ export default function FinanceSPPPage() {
               {SPP_BY_CLASS.map((item, idx) => (
                 <tr
                   key={idx}
-                  onClick={() => setSelectedClassDetail(item)}
+                  onClick={() => {
+                    setModalSearchQuery('');
+                    setSelectedClassDetail(item);
+                  }}
                   className="hover:bg-emerald-50/70 cursor-pointer transition-colors"
                 >
                   <td className="p-3 font-black text-slate-900">{item.class_name}</td>
@@ -103,9 +150,9 @@ export default function FinanceSPPPage() {
                     </span>
                   </td>
                   <td className="p-3 text-center">
-                    <button className="px-3 py-1 bg-emerald-700 text-white rounded-lg font-black text-[10px] flex items-center gap-1 mx-auto">
-                      <span>Rincian Siswa</span>
-                      <ChevronRight className="w-3 h-3" />
+                    <button className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-black text-[11px] flex items-center gap-1 mx-auto shadow-sm transition-all">
+                      <span>Rincian Siswa ({item.total_students})</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>
@@ -115,54 +162,101 @@ export default function FinanceSPPPage() {
         </div>
       </div>
 
-      {/* Modal Drill Down Detail Siswa Kelas */}
+      {/* MODAL DRILL DOWN: MENAMPILKAN SELURUH 50 SISWA DARI SUPABASE */}
       {selectedClassDetail && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
-            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between shrink-0">
               <h3 className="text-sm font-black flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-amber-300" />
-                <span>Rincian SPP Siswa: {selectedClassDetail.class_name}</span>
+                <span>Rincian SPP Seluruh Siswa: {selectedClassDetail.class_name}</span>
               </h3>
-              <button onClick={() => setSelectedClassDetail(null)} className="text-white hover:text-amber-200">
+              <button
+                onClick={() => setSelectedClassDetail(null)}
+                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 font-bold text-xs">
-              <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-                <p className="text-slate-900">Wali Kelas: <span className="text-emerald-900 font-black">{selectedClassDetail.teacher}</span></p>
-                <p className="text-emerald-950 font-black">Capaian: {selectedClassDetail.pct}% ({selectedClassDetail.paid_students}/{selectedClassDetail.total_students} Siswa Lunas)</p>
+            {/* Modal Content Body */}
+            <div className="p-5 space-y-4 font-bold text-xs overflow-y-auto flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                <div>
+                  <p className="text-slate-900">Wali Kelas: <span className="text-emerald-950 font-black">{selectedClassDetail.teacher}</span></p>
+                  <p className="text-[11px] text-slate-600">Total Siswa Terdaftar: {modalStudents.length} Siswa</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-emerald-950 font-black text-sm">Capaian: {selectedClassDetail.pct}%</p>
+                  <p className="text-[11px] text-emerald-800 font-extrabold">{selectedClassDetail.paid_students} Siswa Lunas | {selectedClassDetail.total_students - selectedClassDetail.paid_students} Belum Lunas</p>
+                </div>
               </div>
 
-              <p className="text-slate-600 font-bold">Status Pembayaran Sampel Siswa {selectedClassDetail.class_name}:</p>
+              {/* Search filter in modal */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau NISN siswa di kelas ini..."
+                  value={modalSearchQuery}
+                  onChange={(e) => setModalSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-2 border-emerald-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
 
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-emerald-100 text-emerald-950 font-black">
-                    <th className="p-2">Nama Siswa</th>
-                    <th className="p-2">Nominal SPP</th>
-                    <th className="p-2 text-center">Status Pembayaran</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100">
-                  <tr>
-                    <td className="p-2 font-black text-slate-900">Muhammad Zaid Al-Faris</td>
-                    <td className="p-2">Rp 500.000</td>
-                    <td className="p-2 text-center"><span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 font-black rounded-full text-[10px]">Lunas</span></td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-black text-slate-900">Aisyah Humaira</td>
-                    <td className="p-2">Rp 500.000</td>
-                    <td className="p-2 text-center"><span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 font-black rounded-full text-[10px]">Lunas</span></td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-black text-slate-900">Fatimah Az-Zahra</td>
-                    <td className="p-2">Rp 500.000</td>
-                    <td className="p-2 text-center"><span className="px-2 py-0.5 bg-amber-100 text-amber-900 font-black rounded-full text-[10px]">Belum Lunas</span></td>
-                  </tr>
-                </tbody>
-              </table>
+              {/* Student SPP List Table */}
+              <div className="border-2 border-emerald-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-emerald-100/90 text-emerald-950 font-black text-xs">
+                      <th className="p-3">No</th>
+                      <th className="p-3">NISN</th>
+                      <th className="p-3">Nama Lengkap Siswa</th>
+                      <th className="p-3">Nominal SPP</th>
+                      <th className="p-3 text-center">Status Pembayaran</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
+                    {loadingModal ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-emerald-800">
+                          <div className="flex items-center justify-center gap-2 font-black">
+                            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                            <span>Mengambil Data 50 Siswa dari Database Supabase...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredModalStudents.length > 0 ? (
+                      filteredModalStudents.map((st, idx) => (
+                        <tr key={st.id || idx} className="hover:bg-emerald-50/50 transition-colors">
+                          <td className="p-2.5 text-slate-500 font-mono">{idx + 1}</td>
+                          <td className="p-2.5 text-emerald-900 font-mono font-black">{st.nisn}</td>
+                          <td className="p-2.5 font-black text-slate-900">{st.full_name}</td>
+                          <td className="p-2.5 text-slate-700">Rp {st.spp_amount.toLocaleString('id-ID')}</td>
+                          <td className="p-2.5 text-center">
+                            <span
+                              className={`px-2.5 py-1 rounded-full font-black text-[10px] ${
+                                st.spp_status === 'Lunas'
+                                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                  : 'bg-amber-100 text-amber-900 border border-amber-300'
+                              }`}
+                            >
+                              {st.spp_status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
+                          Tidak ada siswa ditemukan dengan kata kunci pencarian tersebut.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

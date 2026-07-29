@@ -18,6 +18,11 @@ import {
   X,
   CreditCard,
   UserCheck,
+  Clock,
+  Compass,
+  Moon,
+  Sun,
+  Sparkles,
 } from 'lucide-react';
 
 const TEACHERS_LIST_DETAIL = [
@@ -38,11 +43,40 @@ const SPP_SUMMARY_DETAIL = [
   { grade: 'Kelas 6', target: 'Rp 25.000.000', collected: 'Rp 22.500.000', pct: '90%' },
 ];
 
+// Data Jadwal Sholat (WIB)
+const PRAYER_TIMES = [
+  { name: 'Subuh', time: '04:42' },
+  { name: 'Dzuhur', time: '12:02', isNext: true },
+  { name: 'Ashar', time: '15:24' },
+  { name: 'Maghrib', time: '18:01' },
+  { name: 'Isya', time: '19:14' },
+];
+
 export default function ExecutiveDashboard() {
   const router = useRouter();
   const [totalStudentsCount, setTotalStudentsCount] = useState(300);
   const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
   const [isSppModalOpen, setIsSppModalOpen] = useState(false);
+
+  // Realtime Digital Clock
+  const [currentTime, setCurrentTime] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }) + ' WIB'
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch count live dari Supabase
   useEffect(() => {
@@ -102,7 +136,7 @@ export default function ExecutiveDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       {/* Title Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm">
         <div>
@@ -114,9 +148,64 @@ export default function ExecutiveDashboard() {
             Pusat monitoring agregat operasional, presensi wali kelas, dan data seluruh {totalStudentsCount} siswa SDIT Al Ihsan.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-black text-emerald-900">
+        <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-black text-emerald-900 shadow-sm">
           <Calendar className="w-4 h-4 text-emerald-700" />
-          <span>29 Juli 2026</span>
+          <span>Rabu, 29 Juli 2026</span>
+        </div>
+      </div>
+
+      {/* WIDGET ISLAMI: JAM DIGITAL REALTIME & JADWAL SHOLAT BERANIMASI */}
+      <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white p-5 rounded-2xl border-2 border-amber-400 shadow-lg relative overflow-hidden">
+        {/* Pattern Background Overlay */}
+        <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center justify-center pr-6">
+          <Compass className="w-64 h-64 text-amber-300" />
+        </div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Realtime Digital Clock */}
+          <div className="flex items-center gap-4 border-b lg:border-b-0 lg:border-r border-emerald-700/60 pb-4 lg:pb-0 lg:pr-6">
+            <div className="p-3 bg-amber-400 text-slate-950 rounded-2xl shadow-md">
+              <Clock className="w-7 h-7 font-black animate-pulse" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-amber-300 tracking-widest flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                Waktu Lokal Sekolah
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
+                {currentTime || '14:27:52 WIB'}
+              </h2>
+            </div>
+          </div>
+
+          {/* Prayer Times Bar (Animasi Glowing pada Sholat Berikutnya) */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5 text-amber-400" />
+                <span>JADWAL SHOLAT HARI INI (WILAYAH DEPOK & SEKITARNYA)</span>
+              </p>
+              <span className="text-[10px] font-bold text-emerald-200">Menuju Dzuhur: ~15 Menit</span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-2">
+              {PRAYER_TIMES.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`p-2 rounded-xl text-center transition-all ${
+                    item.isNext
+                      ? 'bg-amber-400 text-slate-950 font-black shadow-lg scale-105 ring-2 ring-amber-300 animate-pulse'
+                      : 'bg-emerald-900/80 border border-emerald-700 text-slate-100 font-bold'
+                  }`}
+                >
+                  <p className={`text-[10px] ${item.isNext ? 'text-slate-900 font-black' : 'text-emerald-300 font-bold'}`}>
+                    {item.name}
+                  </p>
+                  <p className="text-xs sm:text-sm font-black font-mono mt-0.5">{item.time}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
