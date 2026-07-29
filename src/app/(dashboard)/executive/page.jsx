@@ -53,15 +53,16 @@ export default function ExecutiveDashboard() {
   const router = useRouter();
   const [userSession, setUserSession] = useState({
     role: 'kepsek',
-    name: 'H. Ahmad Dahlan, M.Pd',
+    name: 'Pengguna System',
     title: 'Kepala Sekolah',
+    class_name: 'Kelas 1 (Abu Bakar)',
   });
 
   const [totalStudentsCount, setTotalStudentsCount] = useState(300);
   const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
   const [isSppModalOpen, setIsSppModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
-  const [activePrayerIndex, setActivePrayerIndex] = useState(4); // Default ISYA
+  const [activePrayerIndex, setActivePrayerIndex] = useState(4);
   const [nextPrayerLabel, setNextPrayerLabel] = useState('Menuju Subuh: ~8 Jam');
 
   useEffect(() => {
@@ -69,7 +70,10 @@ export default function ExecutiveDashboard() {
       const stored = localStorage.getItem('user_session');
       if (stored) {
         try {
-          setUserSession(JSON.parse(stored));
+          const parsed = JSON.parse(stored);
+          if (parsed) {
+            setUserSession(parsed);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -92,21 +96,20 @@ export default function ExecutiveDashboard() {
 
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-      // Penentuan Waktu Sholat Aktif Presisi
       if (currentMinutes >= 19 * 60 + 14 || currentMinutes < 4 * 60 + 42) {
-        setActivePrayerIndex(4); // Isya (Jam 19:14 ke atas)
+        setActivePrayerIndex(4);
         setNextPrayerLabel('Waktu Isya Selesai / Menuju Subuh');
       } else if (currentMinutes >= 18 * 60 + 1) {
-        setActivePrayerIndex(3); // Maghrib
+        setActivePrayerIndex(3);
         setNextPrayerLabel('Menuju Isya: ~15 Menit');
       } else if (currentMinutes >= 15 * 60 + 24) {
-        setActivePrayerIndex(2); // Ashar
+        setActivePrayerIndex(2);
         setNextPrayerLabel('Menuju Maghrib: ~2 Jam');
       } else if (currentMinutes >= 12 * 60 + 2) {
-        setActivePrayerIndex(1); // Dzuhur
+        setActivePrayerIndex(1);
         setNextPrayerLabel('Menuju Ashar: ~3 Jam');
       } else {
-        setActivePrayerIndex(0); // Subuh
+        setActivePrayerIndex(0);
         setNextPrayerLabel('Menuju Dzuhur: ~7 Jam');
       }
     };
@@ -116,11 +119,21 @@ export default function ExecutiveDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch count live dari Supabase
+  // Fetch count live dari Supabase secara Dynamic berdasarkan kelas binaan guru
   useEffect(() => {
     const fetchTotalStudents = async () => {
       if (userSession.role === 'guru') {
-        setTotalStudentsCount(50); // Khusus Kelas 4
+        const assignedClass = userSession.class_name || 'Kelas 1 (Abu Bakar)';
+        const { count, error } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .ilike('class_name', `%${assignedClass.split(' ')[1] || assignedClass}%`);
+
+        if (!error && count !== null) {
+          setTotalStudentsCount(count || 50);
+        } else {
+          setTotalStudentsCount(50);
+        }
         return;
       }
 
@@ -133,15 +146,16 @@ export default function ExecutiveDashboard() {
       }
     };
     fetchTotalStudents();
-  }, [userSession.role]);
+  }, [userSession.role, userSession.class_name]);
 
   const isTeacher = userSession.role === 'guru';
+  const assignedClassTitle = userSession.class_name || 'Kelas 1 (Abu Bakar)';
 
   const SUMMARY_METRICS = [
     {
-      title: isTeacher ? 'Siswa Kelas Binaan (Kelas 4)' : 'Total Siswa Terdaftar',
-      value: `${isTeacher ? 50 : totalStudentsCount} Siswa`,
-      subtext: isTeacher ? 'Kelas 4 (Hamzah) - Ustadz Abdullah' : 'Terbagi di 6 Paralel Kelas Utama',
+      title: isTeacher ? `Siswa Kelas Binaan (${assignedClassTitle})` : 'Total Siswa Terdaftar',
+      value: `${isTeacher ? totalStudentsCount : totalStudentsCount} Siswa`,
+      subtext: isTeacher ? `${assignedClassTitle} - ${userSession.name}` : 'Terbagi di 6 Paralel Kelas Utama',
       change: '100% Terverifikasi Supabase',
       isPositive: true,
       icon: GraduationCap,
@@ -149,9 +163,9 @@ export default function ExecutiveDashboard() {
       onClick: () => router.push(isTeacher ? '/attendance' : '/students'),
     },
     {
-      title: isTeacher ? 'Kehadiran Kelas 4 Hari Ini' : 'Kehadiran Guru & Wali Kelas',
+      title: isTeacher ? `Kehadiran ${assignedClassTitle} Hari Ini` : 'Kehadiran Guru & Wali Kelas',
       value: isTeacher ? '100%' : '98.0%',
-      subtext: isTeacher ? '50 / 50 Murid Hadir Lengkap' : '48 / 49 Pendidik Hadir (Klik Rincian)',
+      subtext: isTeacher ? `${totalStudentsCount} / ${totalStudentsCount} Murid Hadir Lengkap` : '48 / 49 Pendidik Hadir (Klik Rincian)',
       change: 'Presensi Lengkap',
       isPositive: true,
       icon: Users,
@@ -159,9 +173,9 @@ export default function ExecutiveDashboard() {
       onClick: () => (isTeacher ? router.push('/attendance') : setIsTeachersModalOpen(true)),
     },
     {
-      title: isTeacher ? 'Capaian SPP Kelas 4' : 'Capaian SPP Bulan Ini',
+      title: isTeacher ? `Capaian SPP ${assignedClassTitle}` : 'Capaian SPP Bulan Ini',
       value: isTeacher ? '96.0%' : '88.5%',
-      subtext: isTeacher ? 'Rp 24.000.000 (48/50 Murid)' : 'Rp 142.500.000 (Klik Rincian)',
+      subtext: isTeacher ? 'Rp 24.000.000 (Terverifikasi)' : 'Rp 142.500.000 (Klik Rincian)',
       change: isTeacher ? 'Sisa 2 Murid Belum Lunas' : '+4.5% target bulanan',
       isPositive: true,
       icon: Wallet,
@@ -189,19 +203,19 @@ export default function ExecutiveDashboard() {
             <ShieldCheck className="w-6 h-6 text-emerald-700" />
             <span>
               {isTeacher
-                ? 'Dashboard Wali Kelas - Kelas 4 (Hamzah)'
+                ? `Dashboard Wali Kelas - ${assignedClassTitle}`
                 : 'Executive Command Dashboard (Kepala Sekolah)'}
             </span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
             {isTeacher
-              ? 'Pusat pemantauan presensi dan progres akademik siswa Kelas 4 (Hamzah).'
+              ? `Pusat pemantauan presensi dan progres akademik siswa ${assignedClassTitle}.`
               : `Pusat monitoring agregat operasional, presensi wali kelas, dan data seluruh ${totalStudentsCount} siswa SDIT Al Ihsan.`}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-black text-emerald-900 shadow-sm">
           <Calendar className="w-4 h-4 text-emerald-700" />
-          <span>Rabu, 29 Juli 2026</span>
+          <span>Kamis, 30 Juli 2026</span>
         </div>
       </div>
 
@@ -228,7 +242,7 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
 
-          {/* Prayer Times Bar (Isya Aktif Otomatis Jam 19:54) */}
+          {/* Prayer Times Bar */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-black text-amber-300 flex items-center gap-1.5">
@@ -287,12 +301,12 @@ export default function ExecutiveDashboard() {
             <div>
               <h2 className="text-sm font-black text-emerald-950">
                 {isTeacher
-                  ? 'Ringkasan Presensi Kelas Binaan: Kelas 4 (Hamzah)'
+                  ? `Ringkasan Presensi Kelas Binaan: ${assignedClassTitle}`
                   : 'Monitoring Presensi Wali Kelas & Kelas Binaan'}
               </h2>
               <p className="text-xs font-bold text-slate-600">
                 {isTeacher
-                  ? 'Status penginputan presensi harian oleh Ustadz Abdullah'
+                  ? `Status penginputan presensi harian oleh ${userSession.name}`
                   : 'Status penginputan data siswa realtime oleh masing-masing guru'}
               </p>
             </div>
@@ -314,9 +328,9 @@ export default function ExecutiveDashboard() {
               </thead>
               <tbody className="divide-y divide-emerald-100">
                 <tr className="hover:bg-emerald-50/50">
-                  <td className="p-2.5 font-black text-slate-900">Ustadz Abdullah</td>
-                  <td className="p-2.5 text-emerald-800 font-black">Kelas 4 (Hamzah)</td>
-                  <td className="p-2.5 text-slate-700">50 Murid</td>
+                  <td className="p-2.5 font-black text-slate-900">{isTeacher ? userSession.name : 'Ustadz Abdullah'}</td>
+                  <td className="p-2.5 text-emerald-800 font-black">{isTeacher ? assignedClassTitle : 'Kelas 4 (Hamzah)'}</td>
+                  <td className="p-2.5 text-slate-700">{totalStudentsCount} Murid</td>
                   <td className="p-2.5 text-emerald-900 font-black">100%</td>
                   <td className="p-2.5 text-center">
                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black">
@@ -370,11 +384,11 @@ export default function ExecutiveDashboard() {
               </div>
               <div className="flex-1 space-y-0.5">
                 <div className="flex justify-between items-center">
-                  <p className="font-black text-slate-900">Input Presensi Kelas 4 Selesai</p>
+                  <p className="font-black text-slate-900">Input Presensi Selesai</p>
                   <span className="text-[10px] font-mono text-slate-500 font-bold">07:30 WIB</span>
                 </div>
                 <p className="text-slate-600 font-bold leading-relaxed">
-                  Ustadz Abdullah menyelesaikan presensi 50 murid binaannya.
+                  {isTeacher ? userSession.name : 'Ustadz Abdullah'} menyelesaikan presensi murid binaannya.
                 </p>
               </div>
             </div>

@@ -3,7 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { Bell, Search, Radio, Clock, X, CheckCheck, Info, AlertTriangle, MessageSquare, GraduationCap, User } from 'lucide-react';
+import {
+  Bell,
+  Search,
+  Radio,
+  Clock,
+  X,
+  CheckCheck,
+  Info,
+  AlertTriangle,
+  MessageSquare,
+  GraduationCap,
+} from 'lucide-react';
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -38,17 +49,17 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [timeString, setTimeString] = useState('');
 
-  // Global Search State (POIN 3)
+  // Global Search State
   const [globalQuery, setGlobalQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Dynamic Session State
+  // Dynamic Session State (Membaca data pengguna asli dari Cookie / LocalStorage)
   const [userSession, setUserSession] = useState({
-    name: currentRole === 'Kepala Sekolah' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
+    name: 'Pengguna System',
     title: currentRole,
-    role: currentRole === 'Kepala Sekolah' ? 'kepsek' : 'guru',
+    role: 'kepsek',
   });
 
   useEffect(() => {
@@ -74,13 +85,13 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
             setUserSession(parsed);
           }
         } catch (err) {
-          console.error(err);
+          console.error('Header Session Parsing Error:', err);
         }
       }
     }
   }, [currentRole]);
 
-  // Global Live Search Handler (POIN 3)
+  // Global Live Search Handler
   useEffect(() => {
     if (!globalQuery.trim()) {
       setSearchResults([]);
@@ -129,7 +140,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
   };
 
   const getInitials = (name) => {
-    if (!name) return 'KS';
+    if (!name) return 'US';
     const cleanName = name.replace(/^(H\.|Hj\.|Dr\.|Ustadz|Ustadzah)\s+/i, '');
     const parts = cleanName.trim().split(' ');
     if (parts.length >= 2) {
@@ -140,7 +151,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
 
   return (
     <header className="print:hidden bg-white border-b-2 border-emerald-200 h-16 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-      {/* Global Command Search Bar (POIN 3) */}
+      {/* Global Command Search Bar */}
       <div className="flex items-center gap-4 flex-1 max-w-md relative">
         <div className="relative w-full">
           <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3 font-bold" />
@@ -200,7 +211,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
         {/* Date Display */}
         <div className="hidden md:flex items-center gap-1.5 text-xs font-black text-emerald-950 bg-emerald-100/80 px-3 py-1.5 rounded-xl border border-emerald-300">
           <Clock className="w-3.5 h-3.5 text-emerald-700" />
-          <span>{timeString || 'Rabu, 29 Juli 2026'}</span>
+          <span>{timeString || 'Kamis, 30 Juli 2026'}</span>
         </div>
 
         {/* Realtime Status Indicator */}
@@ -329,7 +340,7 @@ export default function Header({ currentRole = 'Kepala Sekolah' }) {
               {userSession.name}
             </p>
             <p className="text-[10px] text-emerald-800 font-extrabold mt-0.5">
-              {userSession.title}
+              {userSession.title || userSession.class_name || 'Guru / Wali Kelas'}
             </p>
           </div>
         </div>

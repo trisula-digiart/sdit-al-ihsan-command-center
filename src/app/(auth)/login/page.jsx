@@ -54,38 +54,103 @@ export default function LoginPage() {
     if (selectedRole === 'kepsek') {
       setEmail('kepsek@sditalihsan.sch.id');
     } else {
-      setEmail('guru@sditalihsan.sch.id');
+      setEmail('umarkelas1@k2c.com');
     }
   };
 
-  const handleLogin = (e) => {
+  // Helper untuk mengekstrak Nama & Kelas dari Email jika DB fallback
+  const parseTeacherFromEmail = (inputEmail) => {
+    const cleanPrefix = inputEmail.split('@')[0].toLowerCase();
+    
+    let teacherName = 'Ustadz Guru';
+    let assignedClass = 'Kelas 1 (Abu Bakar)';
+
+    if (cleanPrefix.includes('umar')) {
+      teacherName = 'Umar';
+      assignedClass = 'Kelas 1 (Abu Bakar)';
+    } else if (cleanPrefix.includes('rahma')) {
+      teacherName = 'Ustadzah Rahma';
+      assignedClass = 'Kelas 1 (Abu Bakar)';
+    } else if (cleanPrefix.includes('rizky')) {
+      teacherName = 'Ustadz Rizky';
+      assignedClass = 'Kelas 2 (Ali)';
+    } else if (cleanPrefix.includes('farhan')) {
+      teacherName = 'Ustadz Farhan';
+      assignedClass = 'Kelas 3 (Thoriq)';
+    } else if (cleanPrefix.includes('guru') || cleanPrefix.includes('abdullah')) {
+      teacherName = 'Ustadz Abdullah';
+      assignedClass = 'Kelas 4 (Hamzah)';
+    } else if (cleanPrefix.includes('khadijah')) {
+      teacherName = 'Ustadzah Khadijah';
+      assignedClass = 'Kelas 5 (Mu\'adz)';
+    } else if (cleanPrefix.includes('hasan')) {
+      teacherName = 'Ustadz Hasan';
+      assignedClass = 'Kelas 6 (Al-Farisi)';
+    } else {
+      // Capitalize first letter dari email prefix
+      teacherName = cleanPrefix.charAt(0).toUpperCase() + cleanPrefix.slice(1);
+    }
+
+    return { name: teacherName, class_name: assignedClass };
+  };
+
+  const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const sessionData = {
+      let sessionData = {
         role: role,
         name: role === 'kepsek' ? 'H. Ahmad Dahlan, M.Pd' : 'Ustadz Abdullah',
-        title: role === 'kepsek' ? 'Kepala Sekolah' : 'Guru / Wali Kelas 4',
+        title: role === 'kepsek' ? 'Kepala Sekolah' : 'Guru / Wali Kelas',
+        class_name: 'Kelas 1 (Abu Bakar)',
         email: email,
       };
 
+      if (role === 'guru') {
+        // 1. Coba ambil data Guru asli dari tabel Supabase `teachers` / `users`
+        try {
+          const { data: teacherData, error } = await supabase
+            .from('teachers')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+          if (!error && teacherData) {
+            sessionData.name = teacherData.name || teacherData.full_name || 'Umar';
+            sessionData.class_name = teacherData.class_name || teacherData.assigned_class || 'Kelas 1 (Abu Bakar)';
+            sessionData.title = `Wali Kelas - ${sessionData.class_name}`;
+          } else {
+            // Fallback cerdas berdasarkan email yang diketik
+            const fallback = parseTeacherFromEmail(email);
+            sessionData.name = fallback.name;
+            sessionData.class_name = fallback.class_name;
+            sessionData.title = `Wali Kelas - ${fallback.class_name}`;
+          }
+        } catch (dbErr) {
+          const fallback = parseTeacherFromEmail(email);
+          sessionData.name = fallback.name;
+          sessionData.class_name = fallback.class_name;
+          sessionData.title = `Wali Kelas - ${fallback.class_name}`;
+        }
+      }
+
       const sessionString = JSON.stringify(sessionData);
 
-      // 1. Simpan Cookie "user_session_token" agar terbaca oleh src/middleware.js
+      // 2. Simpan Cookie "user_session_token" agar terbaca oleh middleware.js
       document.cookie = `user_session_token=${encodeURIComponent(
         sessionString
       )}; path=/; max-age=${30 * 60}; SameSite=Lax`;
 
-      // 2. Simpan juga ke localStorage sebagai cadangan Client State
+      // 3. Simpan juga ke localStorage sebagai cadangan Client State
       if (typeof window !== 'undefined') {
         localStorage.setItem('user_session', sessionString);
       }
 
-      // 3. Tentukan Target Rute
-      const targetPath = role === 'kepsek' ? '/executive' : '/attendance';
+      // 4. Tentukan Target Rute
+      const targetPath = role === 'kepsek' ? '/executive' : '/executive';
 
-      // 4. Redirect Fisik (Mengirimkan cookie ke middleware secara instan)
+      // 5. Hard Redirect
       window.location.href = targetPath;
     } catch (error) {
       console.error('Login Execution Error:', error);
@@ -231,7 +296,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Tombol Login Aktivator Cookie */}
+            {/* Tombol Login */}
             <button
               type="submit"
               disabled={isSubmitting}
