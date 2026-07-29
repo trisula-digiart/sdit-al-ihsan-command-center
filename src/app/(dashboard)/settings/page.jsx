@@ -97,7 +97,7 @@ export default function SettingsPage() {
     fetchSchoolSettings();
   }, []);
 
-  // Fetch Entire Teachers List dari Supabase Cloud
+  // Fetch Entire Teachers List dari Supabase Cloud (SYNTAX FIXED)
   const fetchTeachers = async () => {
     setLoadingTeachers(true);
     try {
@@ -115,7 +115,7 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Error fetching teachers:', err);
       setTeachersList(DEFAULT_TEACHERS);
-    } font-black {
+    } finally {
       setLoadingTeachers(false);
     }
   };
@@ -238,7 +238,6 @@ export default function SettingsPage() {
     };
 
     try {
-      // 1. Simpan ke Supabase Database
       const { data, error } = await supabase
         .from('teachers')
         .insert([payload])
@@ -248,7 +247,6 @@ export default function SettingsPage() {
         throw error;
       }
 
-      // 2. Reset form & refresh list
       setNewTeacher({ name: '', email: '', password: '', class_assigned: 'Kelas 1 (Abu Bakar)' });
       setTeacherSuccess(true);
       fetchTeachers();
@@ -256,7 +254,6 @@ export default function SettingsPage() {
       setTimeout(() => setTeacherSuccess(false), 3000);
     } catch (err) {
       console.error('Error inserting teacher:', err);
-      // Fallback lokal jika tabel teachers belum tersedia di Supabase schema
       const createdFallback = {
         id: Date.now(),
         ...payload,
