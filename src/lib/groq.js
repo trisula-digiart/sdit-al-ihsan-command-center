@@ -33,6 +33,7 @@ Utamakan nilai-nilai pendidikan Islam terpadu, empati, serta kejelasan informasi
  */
 export async function generateGroqResponse({
   prompt,
+  messages,
   systemPrompt = SDIT_SYSTEM_PROMPT,
   temperature = 0.7,
   maxTokens = 2048,
@@ -40,11 +41,13 @@ export async function generateGroqResponse({
   try {
     const groq = getGroqClient();
 
+    const formattedMessages = messages || [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt || '' },
+    ];
+
     const response = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt },
-      ],
+      messages: formattedMessages,
       model: 'llama-3.3-70b-versatile',
       temperature,
       max_tokens: maxTokens,
@@ -53,10 +56,10 @@ export async function generateGroqResponse({
     return {
       success: true,
       content: response.choices[0]?.message?.content || '',
-      usage: response.usage,
+      usage: response.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     };
   } catch (error) {
-    console.error('Groq API Error:', error);
+    console.error('[Groq API Error]:', error);
     return {
       success: false,
       error: error.message || 'Gagal memproses permintaan AI.',
@@ -65,12 +68,18 @@ export async function generateGroqResponse({
 }
 
 /**
+ * Alias untuk backward compatibility
+ */
+export const generateGroqCompletion = generateGroqResponse;
+
+/**
  * Helper untuk pemanggilan streaming Groq AI (Chat Hub)
  */
 export async function generateGroqStream({
   messages,
   systemPrompt = SDIT_SYSTEM_PROMPT,
   temperature = 0.7,
+  maxTokens = 2048,
 }) {
   const groq = getGroqClient();
 
@@ -83,6 +92,12 @@ export async function generateGroqStream({
     messages: formattedMessages,
     model: 'llama-3.3-70b-versatile',
     temperature,
+    max_tokens: maxTokens,
     stream: true,
   });
 }
+
+/**
+ * Alias untuk backward compatibility
+ */
+export const getGroqChatStream = generateGroqStream;

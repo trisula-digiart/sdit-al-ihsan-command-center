@@ -1,4 +1,4 @@
-import { generateGroqStream } from '@/lib/groq';
+import { getGroqChatStream } from '@/lib/groq';
 
 const SYSTEM_PROMPT_CHAT = `
 Anda adalah Asisten AI Kurikulum & Akademik SDIT Al Ihsan.
@@ -6,8 +6,8 @@ Tugas utama Anda:
 1. Membantu Guru menyusun Modul Ajar, RPP, dan Alur Tujuan Pembelajaran (ATP) Kurikulum Merdeka berlandaskan nilai-nilai Islami.
 2. Membantu menyusun Bank Soal (Pilihan Ganda, Isian, Essay) yang mendidik dan berbobot (HOTS/LOTS).
 3. Membantu membuat pengumuman kelas atau narasi edukasi Islami.
-4. Memberikan tanggapan yang terstruktur menggunakan format Markdown (headers, bullet points, bolding).
-5. Selalu komunikatif, ramah, Islami, dan menyemangati para pendidik SDIT Al Ihsan.
+4. Memberikan tanggapan yang terstruktur menggunakan format Markdown (headers, bullet points, bolding, code blocks jika ada).
+5. Selalu komunikatif, ramah, Islami, dan menyemangati para pendidik.
 `;
 
 export async function POST(request) {
@@ -21,15 +21,18 @@ export async function POST(request) {
       );
     }
 
-    const formattedMessages = messages.map((m) => ({
-      role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.content || m.text || '',
-    }));
+    const formattedMessages = [
+      { role: 'system', content: SYSTEM_PROMPT_CHAT },
+      ...messages.map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      })),
+    ];
 
-    const stream = await generateGroqStream({
+    const stream = await getGroqChatStream({
       messages: formattedMessages,
-      systemPrompt: SYSTEM_PROMPT_CHAT,
       temperature: 0.7,
+      max_tokens: 2048,
     });
 
     const encoder = new TextEncoder();
@@ -61,7 +64,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('[API_CHAT_STREAM_ERROR]:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Gagal terhubung ke engine Groq Chat Stream.' }),
+      JSON.stringify({ error: 'Gagal terhubung ke engine Groq Chat Stream.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
