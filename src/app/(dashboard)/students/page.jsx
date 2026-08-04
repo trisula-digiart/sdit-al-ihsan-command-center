@@ -73,7 +73,7 @@ function GlassmorphismModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-transparent transition-all"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-transparent transition-all cursor-pointer"
             aria-label="Tutup Modal"
           >
             <X className="w-5 h-5" />
@@ -238,7 +238,7 @@ export default function StudentsMasterPage() {
         throw new Error(result.error || 'Gagal menyusun narasi rapor.');
       }
 
-      setGeneratedNarrative(result.narrative);
+      setGeneratedNarrative(result.narrative || result.content || '');
     } catch (err) {
       console.error('[NARASI_RAPOR_ERROR]:', err);
       setGeneratedNarrative('Mohon maaf, terjadi kendala saat menyusun narasi rapor. Silakan coba kembali.');
@@ -476,7 +476,7 @@ export default function StudentsMasterPage() {
         </div>
       </div>
 
-      {}
+      {/* AI Narrative Modal */}
       <GlassmorphismModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
@@ -493,7 +493,7 @@ export default function StudentsMasterPage() {
                 rows={2}
                 value={aiFormData.nilaiAkademik}
                 onChange={(e) => setAiFormData({ ...aiFormData, nilaiAkademik: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500 font-medium"
               />
             </div>
 
@@ -503,7 +503,7 @@ export default function StudentsMasterPage() {
                 rows={2}
                 value={aiFormData.capaianHafalan}
                 onChange={(e) => setAiFormData({ ...aiFormData, capaianHafalan: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500 font-medium"
               />
             </div>
 
@@ -513,7 +513,7 @@ export default function StudentsMasterPage() {
                 type="text"
                 value={aiFormData.kedisiplinanIbadah}
                 onChange={(e) => setAiFormData({ ...aiFormData, kedisiplinanIbadah: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500 font-medium"
               />
             </div>
 
@@ -523,7 +523,7 @@ export default function StudentsMasterPage() {
                 rows={2}
                 value={aiFormData.catatanWaliKelas}
                 onChange={(e) => setAiFormData({ ...aiFormData, catatanWaliKelas: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-xl text-gray-100 focus:outline-none focus:border-emerald-500 font-medium"
               />
             </div>
 
@@ -576,13 +576,14 @@ export default function StudentsMasterPage() {
         </div>
       </GlassmorphismModal>
 
-      {}
+      {/* Bulk Import Modal */}
       <BulkImportModal
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}
         onSuccess={fetchStudents}
       />
 
+      {/* Add Student Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden">
@@ -593,7 +594,7 @@ export default function StudentsMasterPage() {
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-white hover:text-amber-200"
+                className="text-white hover:text-amber-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

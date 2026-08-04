@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateGroqCompletion } from '@/lib/groq';
-import { logAiUsage } from '@/lib/supabase/client';
+import { generateGroqResponse } from '@/lib/groq';
 
 const SYSTEM_PROMPT_BILLING_WA = `
 Anda adalah AI Staf Keuangan & Hubungan Orang Tua SDIT Al Ihsan.
@@ -24,8 +23,7 @@ export async function POST(request) {
       bulanTunggakan = 'Bulan Agustus 2026',
       totalTagihan = 'Rp 450.000',
       rincianTagihan = 'SPP Bulanan Rp 450.000',
-      noRekening = 'BSi 7123456789 a.n SDIT Al Ihsan',
-      userId = null,
+      noRekening = 'BSI 7123456789 a.n SDIT Al Ihsan',
     } = body;
 
     const userPrompt = `
@@ -40,41 +38,31 @@ Susunkan draf pesan WhatsApp pengingat SPP dengan detail berikut:
 Buatkan draf pesan WhatsApp yang rapi, santun, Islami, lengkap dengan emoji yang sesuai agar nyaman dibaca di ponsel!
 `;
 
-    const aiResult = await generateGroqCompletion({
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT_BILLING_WA },
-        { role: 'user', content: userPrompt },
-      ],
+    const aiResult = await generateGroqResponse({
+      prompt: userPrompt,
+      systemPrompt: SYSTEM_PROMPT_BILLING_WA,
       temperature: 0.5,
-      max_tokens: 1200,
+      maxTokens: 1200,
     });
 
     if (!aiResult.success) {
+      console.error('[API_BILLING_WA_FAIL]:', aiResult.error);
       return NextResponse.json(
-        { success: false, error: aiResult.error },
+        { success: false, error: aiResult.error || 'Gagal menyusun pesan penagihan.' },
         { status: 500 }
       );
-    }
-
-    if (userId) {
-      await logAiUsage({
-        userId,
-        featureType: 'billing_wa',
-        promptTokens: aiResult.usage.prompt_tokens,
-        completionTokens: aiResult.usage.completion_tokens,
-        totalTokens: aiResult.usage.total_tokens,
-      });
     }
 
     return NextResponse.json({
       success: true,
       messageContent: aiResult.content,
+      data: aiResult.content,
       usage: aiResult.usage,
     });
   } catch (error) {
-    console.error('[API_BILLING_WA_ERROR]:', error);
+    console.error('[API_BILLING_WA_CRASH]:', error);
     return NextResponse.json(
-      { success: false, error: 'Gagal menyusun pesan penagihan SPP WA.' },
+      { success: false, error: error.message || 'Gagal menyusun pesan penagihan SPP WA.' },
       { status: 500 }
     );
   }

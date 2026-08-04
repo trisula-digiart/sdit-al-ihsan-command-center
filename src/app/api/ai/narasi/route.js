@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
-import { generateGroqCompletion } from '@/lib/groq';
-import { logAiUsage } from '@/lib/supabase/client';
+import { generateGroqResponse } from '@/lib/groq';
 
-const SYSTEM_PROMPT_NARASI = `
-Anda adalah AI Pakar Pedagogi & Psikologi Anak SDIT Al Ihsan.
-Tugas Anda adalah menyusun Narasi Perkembangan Karakter & Akademik Siswa untuk Rapor.
+const SYSTEM_PROMPT_NARASI_RAPOR = `
+Anda adalah AI Konsultan Pendidikan & Wali Kelas SDIT Al Ihsan.
+Tugas Anda adalah menyusun Narasi Rapor Perkembangan Karakter & Akademik Siswa.
 
-Prinsip Penulisan Narasi Rapor:
-1. Gunakan pola Sandwich Feedback: Apresiasi Potensi/Kelebihan -> Area Pengembangan/Catatan Perbaikan -> Doa & Motivasi Islami.
-2. Bahasa harus konstruktif, positif, solutif, komunikatif bagi Orang Tua, dan berlandaskan akhlakul karimah.
-3. Sertakan evaluasi hafalan Al-Qur'an (Tahfiz), ibadah harian, serta interaksi sosial di sekolah.
-4. Hindari bahasa yang menghakimi atau terkesan merendahkan anak.
+Prinsip Penyusunan Narasi Rapor SDIT Al Ihsan:
+1. Gunakan Bahasa Indonesia yang sangat santun, edukatif, Islami, dan memotivasi.
+2. Terapkan Metode "Sandwich Feedback":
+   - Paragraf 1: Apresiasi & Puji Kelebihan/Karakter Positif Siswa (Akademik/Ibadah).
+   - Paragraf 2: Evaluasi & Area Pengembangan/Bimbingan yang Perlu Ditingkatkan di Rumah.
+   - Paragraf 3: Doa Kebaikan, Harapan, dan Salam Penutup untuk Orang Tua.
+3. Selalu sebutkan nama siswa secara hangat (misalnya "Ananda [Nama Siswa]").
+4. Hindari kata-kata penghakiman yang membuat patah semangat.
 `;
 
 export async function POST(request) {
@@ -18,62 +20,50 @@ export async function POST(request) {
     const body = await request.json();
     const {
       namaSiswa = 'Ananda',
-      kelas = '1 Al-Farabi',
-      semester = 'Ganjil',
-      nilaiAkademik = 'Sangat Baik pada mapel IPA dan Matematika',
-      capaianHafalan = 'Juz 30 (Surah An-Naba s.d At-Takwir tuntas dengan tajwid baik)',
-      kedisiplinanIbadah = 'Rajin shalat dhuha dan dzuhur berjamaah',
-      catatanWaliKelas = 'Ananda aktif, namun kadang perlu dibimbing fokus saat jam pengerjaan tugas mandiri',
-      userId = null,
+      kelas = '1 Abu Bakar',
+      nilaiAkademik = '',
+      capaianHafalan = '',
+      kedisiplinanIbadah = '',
+      catatanWaliKelas = '',
     } = body;
 
     const userPrompt = `
-Susunkan Narasi Perkembangan Siswa untuk Rapor SDIT Al Ihsan dengan data berikut:
+Susunkan narasi rapor untuk siswa berikut:
 - Nama Siswa: ${namaSiswa}
-- Kelas: ${kelas} (${semester})
-- Capaian Akademik: ${nilaiAkademik}
-- Capaian Hafalan Al-Qur'an / Tahfiz: ${capaianHafalan}
-- Kedisiplinan & Sikap Ibadah: ${kedisiplinanIbadah}
-- Catatan Khusus Wali Kelas: ${catatanWaliKelas}
+- Kelas: ${kelas}
+- Capaian Akademik & Mapel: ${nilaiAkademik || 'Sangat baik dan kooperatif'}
+- Capaian Hafalan Al-Qur'an (Tahfizh): ${capaianHafalan || 'Lancar sesuai target semester'}
+- Sikap & Kedisiplinan Ibadah: ${kedisiplinanIbadah || 'Sangat rajin dan tertib shalat berjamaah'}
+- Catatan Khusus Wali Kelas: ${catatanWaliKelas || 'Siswa santun dan memiliki kepemimpinan baik'}
 
-Buatkan 2 Paragraf Narasi Rapor yang hangat, edukatif, dan memotivasi orang tua serta siswa!
+Buatkan 3 paragraf narasi rapor yang padat, hangat, dan bernuansa Islami!
 `;
 
-    const aiResult = await generateGroqCompletion({
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT_NARASI },
-        { role: 'user', content: userPrompt },
-      ],
+    const aiResult = await generateGroqResponse({
+      prompt: userPrompt,
+      systemPrompt: SYSTEM_PROMPT_NARASI_RAPOR,
       temperature: 0.6,
-      max_tokens: 1500,
+      maxTokens: 1500,
     });
 
     if (!aiResult.success) {
+      console.error('[API_NARASI_RAPOR_FAIL]:', aiResult.error);
       return NextResponse.json(
-        { success: false, error: aiResult.error },
+        { success: false, error: aiResult.error || 'Gagal memproses AI' },
         { status: 500 }
       );
-    }
-
-    if (userId) {
-      await logAiUsage({
-        userId,
-        featureType: 'narasi_rapor',
-        promptTokens: aiResult.usage.prompt_tokens,
-        completionTokens: aiResult.usage.completion_tokens,
-        totalTokens: aiResult.usage.total_tokens,
-      });
     }
 
     return NextResponse.json({
       success: true,
       narrative: aiResult.content,
+      content: aiResult.content,
       usage: aiResult.usage,
     });
   } catch (error) {
-    console.error('[API_NARASI_RAPOR_ERROR]:', error);
+    console.error('[API_NARASI_RAPOR_CRASH]:', error);
     return NextResponse.json(
-      { success: false, error: 'Gagal membuat narasi rapor siswa.' },
+      { success: false, error: error.message || 'Terjadi kesalahan internal pada server AI.' },
       { status: 500 }
     );
   }
