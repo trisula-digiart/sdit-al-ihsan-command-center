@@ -10,6 +10,8 @@ import {
   X,
   Plus,
   Edit3,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 
 const INITIAL_TEMPLATES = [
@@ -37,6 +39,10 @@ export default function DocumentGeneratorPage() {
   const [templatesList, setTemplatesList] = useState(INITIAL_TEMPLATES);
   const [selectedTemplate, setSelectedTemplate] = useState('surat_tugas');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // State AI Auto-Generator
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiNote, setAiNote] = useState('');
 
   // Dynamic School Info State (Fetch Realtime dari Supabase school_settings)
   const [schoolInfo, setSchoolInfo] = useState({
@@ -112,6 +118,56 @@ export default function DocumentGeneratorPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // FUNGSI UNTUK MERANGKAI DRAF SURAT MENGGUNAKAN GROQ AI ENGINE
+  const handleGenerateAI = async () => {
+    setAiLoading(true);
+    try {
+      const activeTemplateObj = templatesList.find((t) => t.id === selectedTemplate);
+
+      const response = await fetch('/api/ai/document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jenisSurat: activeTemplateObj?.title || 'Surat Resmi SDIT Al Ihsan',
+          nomorSurat: formData.nomorSurat,
+          penerima: formData.namaPenerima,
+          nipNisn: formData.nipNisn,
+          jabatan: formData.jabatan,
+          perihal: formData.maksudTugas,
+          lokasi: formData.lokasi,
+          catatanKhusus: aiNote || 'Buatlah naskah surat resmi yang baku, beradab, dan bernuansa Islami.',
+        }),
+      });
+
+      const resData = await response.json();
+
+      if (resData.success && resData.content) {
+        // Terapkan hasil kalimat AI ke live preview
+        const aiText = resData.content;
+        
+        // Pecah paragraf jika AI memberikan format terpisah
+        const paragraphs = aiText.split('\n\n').filter((p) => p.trim() !== '');
+
+        if (paragraphs.length >= 3) {
+          setPreviewParagraph1(paragraphs[0]);
+          setPreviewParagraph2(paragraphs[1]);
+          setPreviewParagraph3(paragraphs[paragraphs.length - 1]);
+        } else {
+          setPreviewParagraph2(aiText);
+        }
+      } else {
+        alert('Gagal menyusun surat via AI: ' + (resData.error || 'Server error'));
+      }
+    } catch (err) {
+      console.error('Error generating AI document:', err);
+      alert('Terjadi kesalahan jaringan saat menghubungi AI Engine.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleAddTemplate = (e) => {
     e.preventDefault();
     if (!newTemplate.title) return;
@@ -169,16 +225,16 @@ export default function DocumentGeneratorPage() {
         <div>
           <h1 className="text-xl font-black text-emerald-950 flex items-center gap-2">
             <FileText className="w-6 h-6 text-emerald-700" />
-            <span>Document Generator & PDF Export</span>
+            <span>Document Generator & PDF Export (Groq AI)</span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
-            Buat dan cetak surat resmi ber-kop {schoolInfo.school_name} secara instan.
+            Buat dan cetak surat resmi ber-kop {schoolInfo.school_name} secara instan dengan dukungan AI.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
           >
             <Upload className="w-4 h-4" />
             <span>Upload Template Baru</span>
@@ -186,7 +242,7 @@ export default function DocumentGeneratorPage() {
 
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all"
+            className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>Cetak / Simpan PDF</span>
@@ -212,7 +268,7 @@ export default function DocumentGeneratorPage() {
                 <button
                   key={tmpl.id}
                   onClick={() => setSelectedTemplate(tmpl.id)}
-                  className={`w-full p-3 rounded-xl border-2 text-left text-xs transition-all flex items-center justify-between ${
+                  className={`w-full p-3 rounded-xl border-2 text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
                     selectedTemplate === tmpl.id
                       ? 'border-emerald-700 bg-emerald-50 text-emerald-950 font-black shadow-sm'
                       : 'border-slate-200 hover:border-emerald-300 text-slate-700 font-bold'
@@ -231,9 +287,15 @@ export default function DocumentGeneratorPage() {
           </div>
 
           <div className="border-t-2 border-emerald-100 pt-4 space-y-3">
-            <label className="block text-xs font-black text-emerald-950">
-              2. Parameter & Isi Dokumen
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-black text-emerald-950">
+                2. Parameter & Isi Dokumen
+              </label>
+              <span className="text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-md border border-amber-300 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                <span>Groq AI Powered</span>
+              </span>
+            </div>
 
             <div className="space-y-1">
               <span className="text-[11px] font-black text-slate-800">Nomor Surat</span>
@@ -313,6 +375,40 @@ export default function DocumentGeneratorPage() {
                 />
               </div>
             </div>
+
+            {/* BOX INSTRUKSI TAMBAHAN UNTUK AI GENERATOR */}
+            <div className="space-y-1.5 pt-2 border-t border-emerald-100">
+              <label className="block text-[11px] font-black text-emerald-950">
+                Catatan Khusus Instruksi AI (Opsional)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Buat dengan nada sangat resmi dan tambahkan poin urgensi."
+                value={aiNote}
+                onChange={(e) => setAiNote(e.target.value)}
+                className="w-full p-2 text-xs bg-amber-50/50 border border-amber-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* TOMBOL AI GENERATOR */}
+            <button
+              type="button"
+              onClick={handleGenerateAI}
+              disabled={aiLoading}
+              className="w-full py-3 bg-gradient-to-r from-emerald-800 to-teal-900 hover:from-emerald-900 hover:to-teal-950 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {aiLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>Merangkai Surat via Groq AI...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                  <span>Auto-Generate Isi Surat via AI</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -455,7 +551,7 @@ export default function DocumentGeneratorPage() {
               </h3>
               <button
                 onClick={() => setIsUploadModalOpen(false)}
-                className="text-white hover:text-amber-200"
+                className="text-white hover:text-amber-200 text-xs font-black"
               >
                 <X className="w-5 h-5" />
               </button>
