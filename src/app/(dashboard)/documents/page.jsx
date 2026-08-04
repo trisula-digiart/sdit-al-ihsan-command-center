@@ -38,6 +38,7 @@ const INITIAL_TEMPLATES = [
 export default function DocumentGeneratorPage() {
   const [templatesList, setTemplatesList] = useState(INITIAL_TEMPLATES);
   const [selectedTemplate, setSelectedTemplate] = useState('surat_tugas');
+  const [customTitle, setCustomTitle] = useState(''); // Title override dari AI
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // State AI Auto-Generator
@@ -118,6 +119,11 @@ export default function DocumentGeneratorPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleSelectTemplate = (id) => {
+    setSelectedTemplate(id);
+    setCustomTitle(''); // Reset custom title AI jika user memilih manual
+  };
+
   // FUNGSI UNTUK MERANGKAI DRAF SURAT MENGGUNAKAN GROQ AI ENGINE
   const handleGenerateAI = async () => {
     setAiLoading(true);
@@ -130,12 +136,12 @@ export default function DocumentGeneratorPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          jenisSurat: activeTemplateObj?.title || 'Surat Resmi SDIT Al Ihsan',
+          jenisSurat: aiNote || activeTemplateObj?.title || 'Surat Resmi SDIT Al Ihsan',
           nomorSurat: formData.nomorSurat,
           penerima: formData.namaPenerima,
           nipNisn: formData.nipNisn,
           jabatan: formData.jabatan,
-          perihal: formData.maksudTugas,
+          maksudTugas: formData.maksudTugas,
           lokasi: formData.lokasi,
           catatanKhusus: aiNote || 'Buatlah naskah surat resmi yang baku, beradab, dan bernuansa Islami.',
         }),
@@ -143,17 +149,37 @@ export default function DocumentGeneratorPage() {
 
       const resData = await response.json();
 
-      if (resData.success && resData.content) {
-        // Terapkan hasil kalimat AI ke live preview
-        const aiText = resData.content;
-        
-        // Pecah paragraf jika AI memberikan format terpisah
-        const paragraphs = aiText.split('\n\n').filter((p) => p.trim() !== '');
+      if (resData.success && (resData.content || resData.data)) {
+        const aiText = resData.content || resData.data;
 
-        if (paragraphs.length >= 3) {
-          setPreviewParagraph1(paragraphs[0]);
-          setPreviewParagraph2(paragraphs[1]);
-          setPreviewParagraph3(paragraphs[paragraphs.length - 1]);
+        // Terapkan Judul Baru jika user meminta surat jenis tertentu
+        if (aiNote) {
+          setCustomTitle(aiNote.toUpperCase());
+        } else if (activeTemplateObj) {
+          setCustomTitle(activeTemplateObj.title.toUpperCase());
+        }
+
+        // Parse teks dari AI menjadi paragraf yang rapi
+        const lines = aiText
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+
+        if (lines.length > 0) {
+          // Paragraf 1: Salam & Pembukaan
+          const p1Lines = lines.slice(0, Math.min(2, lines.length)).join(' ');
+          setPreviewParagraph1(p1Lines);
+
+          // Paragraf 2: Isi Surat
+          if (lines.length > 2) {
+            const p2Lines = lines.slice(2, lines.length - 1).join('\n\n');
+            setPreviewParagraph2(p2Lines);
+          }
+
+          // Paragraf 3: Penutup & Doa
+          if (lines.length > 3) {
+            setPreviewParagraph3(lines[lines.length - 1]);
+          }
         } else {
           setPreviewParagraph2(aiText);
         }
@@ -181,6 +207,7 @@ export default function DocumentGeneratorPage() {
 
     setTemplatesList([...templatesList, created]);
     setSelectedTemplate(created.id);
+    setCustomTitle('');
     setNewTemplate({ title: '', category: 'Kesiswaan', code: 'CUSTOM-SDIT/2026' });
     setIsUploadModalOpen(false);
   };
@@ -188,6 +215,12 @@ export default function DocumentGeneratorPage() {
   const handlePrint = () => {
     window.print();
   };
+
+  // Judul Aktif Kertas A4
+  const currentTitle =
+    customTitle ||
+    templatesList.find((t) => t.id === selectedTemplate)?.title ||
+    'SURAT RESMI SDIT AL IHSAN';
 
   return (
     <div className="space-y-6">
@@ -267,9 +300,9 @@ export default function DocumentGeneratorPage() {
               {templatesList.map((tmpl) => (
                 <button
                   key={tmpl.id}
-                  onClick={() => setSelectedTemplate(tmpl.id)}
+                  onClick={() => handleSelectTemplate(tmpl.id)}
                   className={`w-full p-3 rounded-xl border-2 text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
-                    selectedTemplate === tmpl.id
+                    selectedTemplate === tmpl.id && !customTitle
                       ? 'border-emerald-700 bg-emerald-50 text-emerald-950 font-black shadow-sm'
                       : 'border-slate-200 hover:border-emerald-300 text-slate-700 font-bold'
                   }`}
@@ -278,7 +311,7 @@ export default function DocumentGeneratorPage() {
                     <p className="font-black">{tmpl.title}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">{tmpl.category} • {tmpl.code}</p>
                   </div>
-                  {selectedTemplate === tmpl.id && (
+                  {selectedTemplate === tmpl.id && !customTitle && (
                     <FileCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                   )}
                 </button>
@@ -379,14 +412,14 @@ export default function DocumentGeneratorPage() {
             {/* BOX INSTRUKSI TAMBAHAN UNTUK AI GENERATOR */}
             <div className="space-y-1.5 pt-2 border-t border-emerald-100">
               <label className="block text-[11px] font-black text-emerald-950">
-                Catatan Khusus Instruksi AI (Opsional)
+                Catatan Khusus / Instruksi Jenis Surat AI
               </label>
               <input
                 type="text"
-                placeholder="Contoh: Buat dengan nada sangat resmi dan tambahkan poin urgensi."
+                placeholder="Contoh: Buatkan Surat Pernyataan Wali Murid"
                 value={aiNote}
                 onChange={(e) => setAiNote(e.target.value)}
-                className="w-full p-2 text-xs bg-amber-50/50 border border-amber-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
+                className="w-full p-2.5 text-xs bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
               />
             </div>
 
@@ -454,10 +487,10 @@ export default function DocumentGeneratorPage() {
                 <div className="w-16 h-16 opacity-0 shrink-0">AI</div>
               </div>
 
-              {/* Judul Surat */}
+              {/* Judul Surat (DYNAMIC DARi AI ATAU TEMPLATE SELECTION) */}
               <div className="text-center my-6 space-y-1">
                 <h4 className="text-base font-black underline tracking-wide uppercase text-slate-900">
-                  {templatesList.find((t) => t.id === selectedTemplate)?.title}
+                  {currentTitle}
                 </h4>
                 <p className="text-xs font-bold text-slate-700">
                   Nomor: {formData.nomorSurat}
@@ -490,14 +523,14 @@ export default function DocumentGeneratorPage() {
                   </div>
                 </div>
 
-                <p
+                <div
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={(e) => setPreviewParagraph2(e.target.innerText)}
-                  className="pt-2 outline-none hover:bg-amber-50 p-1 rounded transition-colors border border-transparent hover:border-amber-300 font-bold"
+                  className="pt-2 outline-none hover:bg-amber-50 p-1 rounded transition-colors border border-transparent hover:border-amber-300 font-bold whitespace-pre-line"
                 >
                   {previewParagraph2}
-                </p>
+                </div>
 
                 <div className="p-4 bg-slate-50 border-2 border-emerald-200 rounded-xl space-y-2 font-bold">
                   <p className="font-black text-slate-900">{formData.maksudTugas}</p>
