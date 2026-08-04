@@ -9,6 +9,12 @@ import {
   CreditCard,
   Search,
   Loader2,
+  Sparkles,
+  Send,
+  Copy,
+  Check,
+  MessageSquare,
+  RefreshCw,
 } from 'lucide-react';
 
 const SPP_BY_CLASS = [
@@ -30,6 +36,22 @@ export default function FinanceSPPPage() {
   const [teacherStudents, setTeacherStudents] = useState([]);
   const [loadingTeacherStudents, setLoadingTeacherStudents] = useState(false);
   const [teacherSearchQuery, setTeacherSearchQuery] = useState('');
+
+  // AI Billing WA Modal State
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
+  const [selectedStudentForWa, setSelectedStudentForWa] = useState(null);
+  const [waFormData, setWaFormData] = useState({
+    namaSiswa: '',
+    namaOrangTua: '',
+    kelas: '',
+    bulanTunggakan: 'Bulan Agustus 2026',
+    totalTagihan: 'Rp 500.000',
+    rincianTagihan: 'SPP Bulanan Rp 500.000',
+    noRekening: 'BSI 7123456789 a.n SDIT Al Ihsan',
+  });
+  const [generatedWaMessage, setGeneratedWaMessage] = useState('');
+  const [isGeneratingWa, setIsGeneratingWa] = useState(false);
+  const [copiedWa, setCopiedWa] = useState(false);
 
   const [userSession, setUserSession] = useState({
     role: 'kepsek',
@@ -140,6 +162,69 @@ export default function FinanceSPPPage() {
       st.nisn.includes(teacherSearchQuery)
   );
 
+  // FUNGSI MEMBUKA MODAL AI BILLING WA
+  const handleOpenWaModal = (student) => {
+    setSelectedStudentForWa(student);
+    setWaFormData({
+      namaSiswa: student.full_name || 'Ananda',
+      namaOrangTua: student.parent_name || 'Bapak/Ibu Wali Murid',
+      kelas: student.class_name || assignedClassTitle,
+      bulanTunggakan: 'Bulan Agustus 2026',
+      totalTagihan: `Rp ${(student.spp_amount || 500000).toLocaleString('id-ID')}`,
+      rincianTagihan: `SPP Bulanan Rp ${(student.spp_amount || 500000).toLocaleString('id-ID')}`,
+      noRekening: 'BSI 7123456789 a.n SDIT Al Ihsan',
+    });
+    setGeneratedWaMessage('');
+    setIsWaModalOpen(true);
+  };
+
+  // FUNGSI MEMANGGIL API AI BILLING GROQ
+  const handleGenerateWaMessage = async (e) => {
+    e?.preventDefault();
+    setIsGeneratingWa(true);
+
+    try {
+      const response = await fetch('/api/ai/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(waFormData),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Gagal menyusun pesan penagihan SPP.');
+      }
+
+      setGeneratedWaMessage(result.messageContent || result.data || '');
+    } catch (err) {
+      console.error('[BILLING_WA_ERROR]:', err);
+      setGeneratedWaMessage('Mohon maaf, terjadi kendala saat menyusun pesan penagihan. Silakan coba lagi.');
+    } finally {
+      setIsGeneratingWa(false);
+    }
+  };
+
+  const handleCopyWa = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedWaMessage);
+      setCopiedWa(true);
+      setTimeout(() => setCopiedWa(false), 2000);
+    } catch (err) {
+      console.error('Gagal menyalin:', err);
+    }
+  };
+
+  const handleSendToWhatsApp = () => {
+    if (!selectedStudentForWa?.whatsapp_no) {
+      alert('Nomor WhatsApp orang tua tidak tersedia.');
+      return;
+    }
+    const cleanPhone = selectedStudentForWa.whatsapp_no.replace(/[^0-9]/g, '');
+    const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+    const encodedMsg = encodeURIComponent(generatedWaMessage);
+    window.open(`https://wa.me/${formattedPhone}?text=${encodedMsg}`, '_blank');
+  };
+
   return (
     <div className="space-y-6 w-full">
       {/* Header */}
@@ -151,6 +236,9 @@ export default function FinanceSPPPage() {
               {isTeacher
                 ? `Keuangan & SPP Siswa - ${assignedClassTitle}`
                 : 'Keuangan & Rekapitulasi SPP Siswa'}
+            </span>
+            <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+              Groq WA Agent Active
             </span>
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-1">
@@ -185,7 +273,7 @@ export default function FinanceSPPPage() {
         <div className="p-4 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm">
           <p className="text-xs font-bold text-slate-700">Siswa Belum Lunas</p>
           <p className="text-2xl font-black text-amber-950 mt-1">{totalUnpaidStudents} Siswa</p>
-          <p className="text-[10px] font-black text-amber-700 mt-1">Proses penagihan oleh Wali Kelas</p>
+          <p className="text-[10px] font-black text-amber-700 mt-1">Proses penagihan via AI WA Agent</p>
         </div>
       </div>
 
@@ -223,12 +311,13 @@ export default function FinanceSPPPage() {
                   <th className="p-3">Nama Lengkap Siswa</th>
                   <th className="p-3">Tagihan SPP</th>
                   <th className="p-3 text-center">Status Pembayaran</th>
+                  <th className="p-3 text-center">Aksi Penagihan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
                 {loadingTeacherStudents ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-emerald-800">
+                    <td colSpan={6} className="p-8 text-center text-emerald-800">
                       <div className="flex items-center justify-center gap-2 font-black">
                         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
                         <span>Mengambil Data Siswa {assignedClassTitle} dari Database Supabase...</span>
@@ -253,11 +342,24 @@ export default function FinanceSPPPage() {
                           {st.spp_status}
                         </span>
                       </td>
+                      <td className="p-3 text-center">
+                        {st.spp_status !== 'Lunas' ? (
+                          <button
+                            onClick={() => handleOpenWaModal(st)}
+                            className="px-2.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white font-black text-[11px] rounded-xl shadow-sm flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>Draft WA AI</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-normal">Lunas</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
+                    <td colSpan={6} className="p-6 text-center text-slate-500 font-bold">
                       Tidak ada siswa ditemukan untuk kelas binaan ini.
                     </td>
                   </tr>
@@ -390,12 +492,13 @@ export default function FinanceSPPPage() {
                       <th className="p-3">Nama Lengkap Siswa</th>
                       <th className="p-3">Nominal SPP</th>
                       <th className="p-3 text-center">Status Pembayaran</th>
+                      <th className="p-3 text-center">Aksi Penagihan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-100 font-bold text-slate-800">
                     {loadingModal ? (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center text-emerald-800">
+                        <td colSpan={6} className="p-8 text-center text-emerald-800">
                           <div className="flex items-center justify-center gap-2 font-black">
                             <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
                             <span>Mengambil Data Siswa dari Database Supabase...</span>
@@ -422,17 +525,147 @@ export default function FinanceSPPPage() {
                               {st.spp_status}
                             </span>
                           </td>
+                          <td className="p-2.5 text-center">
+                            {st.spp_status !== 'Lunas' ? (
+                              <button
+                                onClick={() => handleOpenWaModal(st)}
+                                className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white font-black text-[10px] rounded-lg shadow-sm flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
+                              >
+                                <Sparkles className="w-3 h-3 text-amber-300" />
+                                <span>Draft WA AI</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-normal">Lunas</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="p-6 text-center text-slate-500 font-bold">
+                        <td colSpan={6} className="p-6 text-center text-slate-500 font-bold">
                           Tidak ada siswa ditemukan dengan kata kunci pencarian tersebut.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GENERATOR DRAFT WA PENAGIHAN AI */}
+      {isWaModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>AI Agent Penagihan SPP WA - {waFormData.namaSiswa}</span>
+              </h3>
+              <button
+                onClick={() => setIsWaModalOpen(false)}
+                className="text-white hover:text-amber-200 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs font-bold text-slate-800 overflow-y-auto flex-1">
+              <form onSubmit={handleGenerateWaMessage} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-900 mb-1">Nama Orang Tua / Wali</label>
+                  <input
+                    type="text"
+                    value={waFormData.namaOrangTua}
+                    onChange={(e) => setWaFormData({ ...waFormData, namaOrangTua: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-900 mb-1">Nama Siswa & Kelas</label>
+                  <input
+                    type="text"
+                    value={`${waFormData.namaSiswa} (${waFormData.kelas})`}
+                    disabled
+                    className="w-full p-2 bg-slate-100 border border-slate-300 rounded-xl font-bold text-slate-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-900 mb-1">Bulan Tunggakan</label>
+                  <input
+                    type="text"
+                    value={waFormData.bulanTunggakan}
+                    onChange={(e) => setWaFormData({ ...waFormData, bulanTunggakan: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-900 mb-1">Total Tagihan</label>
+                  <input
+                    type="text"
+                    value={waFormData.totalTagihan}
+                    onChange={(e) => setWaFormData({ ...waFormData, totalTagihan: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-emerald-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={isGeneratingWa}
+                    className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isGeneratingWa ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                        <span>Merangkai Pesan WA via Groq AI...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        <span>Generate Pesan Penagihan Santun via AI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              {/* Preview Hasil Pesan WA */}
+              <div className="space-y-2 pt-2 border-t border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-emerald-950 flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-emerald-700" />
+                    <span>Draf Pesan WhatsApp (Siap Kirim)</span>
+                  </span>
+                  {generatedWaMessage && (
+                    <button
+                      onClick={handleCopyWa}
+                      className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-lg text-[11px] font-black flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      {copiedWa ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedWa ? 'Tersalin' : 'Salin Pesan'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="p-3 bg-slate-50 border-2 border-emerald-200 rounded-xl text-slate-800 font-sans text-xs whitespace-pre-line leading-relaxed min-h-[140px]">
+                  {generatedWaMessage || 'Klik tombol "Generate Pesan Penagihan Santun via AI" di atas untuk membuat draf pesan pengingat SPP.'}
+                </div>
+
+                {generatedWaMessage && (
+                  <button
+                    onClick={handleSendToWhatsApp}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
+                  >
+                    <Send className="w-4 h-4 text-amber-300" />
+                    <span>Kirim Direct via WhatsApp (wa.me)</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
