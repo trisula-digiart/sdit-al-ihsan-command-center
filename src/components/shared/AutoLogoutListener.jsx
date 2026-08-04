@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 
 const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 Menit dalam Milidetik
 
@@ -12,8 +12,9 @@ export default function AutoLogoutListener() {
 
   const handleLogout = useCallback(async () => {
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      if (supabase && supabase.auth) {
+        await supabase.auth.signOut();
+      }
     } catch (error) {
       console.error('Error auto-logging out:', error);
     } finally {
