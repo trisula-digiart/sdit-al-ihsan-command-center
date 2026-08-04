@@ -1,95 +1,88 @@
 import Groq from 'groq-sdk';
 
 /**
- * Singleton Groq Client Instance
- * Menggunakan GROQ_API_KEY secara aman di lingkungan server-side.
+ * Helper untuk mendapatkan instance Groq SDK secara lazy (on-demand).
+ * Mencegah error crash saat 'next build' jika GROQ_API_KEY belum terisi di build environment.
  */
-const globalForGroq = globalThis;
+export function getGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY;
 
-export const groq = globalForGroq.groq || new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+  if (!apiKey) {
+    console.warn(
+      '[Groq API Warning]: GROQ_API_KEY is missing or empty in environment variables.'
+    );
+  }
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForGroq.groq = groq;
+  return new Groq({
+    apiKey: apiKey || 'dummy_key_for_build_phase',
+  });
 }
 
-export const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
-
 /**
- * System Prompt Utama untuk Menjaga Identitas & Karakter Islami SDIT Al Ihsan
+ * System Prompt Standar SDIT Al Ihsan
  */
-export const SYSTEM_PROMPT_BASE = `
-Anda adalah Asisten AI Utama untuk Executive Command Center SDIT Al Ihsan.
-Prinsip Komunikasi:
-1. Islami, Santun, Profesional, Edukatif, dan Mendidik.
-2. Gunakan salam Islami yang santun (Assalamu'alaikum Warahmatullahi Wabarakatuh / Wassalamu'alaikum).
-3. Menggunakan Bahasa Indonesia baku, tertata, dan sesuai ejaan resmi.
-4. Bertindak efektif untuk mendukung administrasi dan operasional pendidikan SDIT Al Ihsan.
+export const SDIT_SYSTEM_PROMPT = `
+Anda adalah Asisten AI Resmi SDIT Al Ihsan Command Center.
+Gunakan bahasa Indonesia yang santun, islami, profesional, dan beradab.
+Selalu awali atau akhiri pesan dengan salam yang sesuai jika relevan (seperti 'Assalamu'alaikum Warahmatullahi Wabarakatuh').
+Utamakan nilai-nilai pendidikan Islam terpadu, empati, serta kejelasan informasi.
 `;
 
 /**
- * Helper Pemanggilan Non-Stream Groq Completion
- * @param {Object} options
- * @returns {Promise<Object>} Response berisi content text & token usage
+ * Helper untuk pemanggilan non-streaming Groq AI
  */
-export async function generateGroqCompletion({
-  messages = [],
-  model = DEFAULT_MODEL,
+export async function generateGroqResponse({
+  prompt,
+  systemPrompt = SDIT_SYSTEM_PROMPT,
   temperature = 0.7,
-  max_tokens = 2048,
-  jsonMode = false,
+  maxTokens = 2048,
 }) {
   try {
-    const formattedMessages = [
-      { role: 'system', content: SYSTEM_PROMPT_BASE },
-      ...messages,
-    ];
+    const groq = getGroqClient();
 
     const response = await groq.chat.completions.create({
-      model,
-      messages: formattedMessages,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      model: 'llama-3.3-70b-versatile',
       temperature,
-      max_tokens,
-      response_format: jsonMode ? { type: 'json_object' } : undefined,
+      max_tokens: maxTokens,
     });
 
     return {
       success: true,
       content: response.choices[0]?.message?.content || '',
-      usage: response.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      usage: response.usage,
     };
   } catch (error) {
-    console.error('[GROQ_API_ERROR]:', error);
+    console.error('Groq API Error:', error);
     return {
       success: false,
-      error: error.message || 'Terjadi kesalahan koneksi ke Groq API Engine.',
-      content: '',
-      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      error: error.message || 'Gagal memproses permintaan AI.',
     };
   }
 }
 
 /**
- * Helper untuk Real-time Streaming Chat Groq Engine
- * @param {Object} options
+ * Helper untuk pemanggilan streaming Groq AI (Chat Hub)
  */
-export async function getGroqChatStream({
-  messages = [],
-  model = DEFAULT_MODEL,
+export async function generateGroqStream({
+  messages,
+  systemPrompt = SDIT_SYSTEM_PROMPT,
   temperature = 0.7,
-  max_tokens = 2048,
 }) {
+  const groq = getGroqClient();
+
   const formattedMessages = [
-    { role: 'system', content: SYSTEM_PROMPT_BASE },
+    { role: 'system', content: systemPrompt },
     ...messages,
   ];
 
-  return groq.chat.completions.create({
-    model,
+  return await groq.chat.completions.create({
     messages: formattedMessages,
+    model: 'llama-3.3-70b-versatile',
     temperature,
-    max_tokens,
     stream: true,
   });
 }
