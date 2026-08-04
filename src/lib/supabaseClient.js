@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Supabase Client Instance (Mengikuti struktur folder src/lib/supabase/client.js)
+ * Supabase Client Instance
  */
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
@@ -18,7 +18,7 @@ export const supabase = createClient(
 );
 
 /**
- * Helper untuk Pencatatan Audit Log Penggunaan Token AI ke database Supabase
+ * Helper untuk Pencatatan Audit Log Penggunaan Token AI ke database
  * @param {Object} params
  */
 export async function logAiUsage({
